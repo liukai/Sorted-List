@@ -1,5 +1,6 @@
 server
 unit_test
+client
 *.o
 *.dSYM
 
