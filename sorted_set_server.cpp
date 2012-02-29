@@ -11,6 +11,8 @@
 #include "sorted_set_server.h"
 using namespace std;
 
+OperationRuler SortedSetServer::ruler;
+
 SortedSetServer::~SortedSetServer() {
     if (server_socket != INVALID) {
         close(server_socket);
@@ -83,19 +85,42 @@ void* SortedSetServer::handle_request(void* args) {
     int* client_socket = (int*) args;
 
     static const int BUFFER_SIZE = 1024;
-    char buffer[BUFFER_SIZE] = { '\0' };
-    int bufferRead = 0;
-    while ((bufferRead = robust_read(*client_socket, buffer, BUFFER_SIZE)) > 0) {
-        cout<<string(buffer, bufferRead)<<endl;
-        robust_write(*client_socket, buffer, bufferRead);        
+    Value buffer[BUFFER_SIZE] = { '\0' };
+    int bufferRead = robust_read(*client_socket, buffer, BUFFER_SIZE);
+    if (bufferRead <= 0) {
+        close_client_socket(client_socket,
+                            "[Error] error occurs while reading data from client");
+        return NULL;
     }
-    if (bufferRead < 0)
-        cerr<<"Error occurs while reading from client"<<endl;
 
-    close(*client_socket);
-    delete client_socket;
+    // TODO: here I implicitly made the assumption that all requests will be fit
+    // in the buffer
+    int argument_count = bufferRead / sizeof(Value) - 1;
+    if (argument_count <= 0) {
+        close_client_socket(client_socket,
+                            "[Error] Abort handling request: "
+                            "The data from client is invalid ...");
+        return NULL;
+    }
+
+    Opeation op = (Opeation)buffer[0];
+    if (!ruler.is_valid_op(op)) {
+        close_client_socket(client_socket, "Invalid operator");
+        return NULL;
+    }
+
+    int expected_argument_count = ruler.get_argument_count(op);
+    // if the arguments are more than we want, we simply ignore it.
+    if (argument_count < expected_argument_count) {
+        close_client_socket(client_socket,
+                            "The data from client doesn't have enough argumetns");
+        return NULL;
+    }
+    
+    close_client_socket(client_socket);
     return NULL;
 }
+
 void SortedSetServer::start_server() {
     pthread_t receive_thread;
     signal(SIGPIPE, SIG_IGN); // TODO: what is this
@@ -109,4 +134,16 @@ void SortedSetServer::start_server() {
             pthread_create(&receive_thread, NULL, handle_request, new int(client_socket));
         }
     }
+}
+
+void SortedSetServer::close_client_socket(int* pFd, const char* error_message) {
+    // TODO: A WORKAROUND
+    static Value error = INVALID;
+    if (error_message == NULL) {
+        write(*pFd, &error, sizeof(Value));
+        cerr<<"[Error] "<<error_message<<endl;
+    }
+
+    close(*pFd);
+    delete pFd;
 }
