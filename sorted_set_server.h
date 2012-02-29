@@ -1,5 +1,5 @@
-#ifndef QUORA_SORTED_SET_SERVER
-#define QUORA_SORTED_SET_SERVER
+#ifndef QUORA_SORTED_SET_SERVER_H
+#define QUORA_SORTED_SET_SERVER_H
 
 class SortedSetServer {
 public:
