@@ -1,4 +1,5 @@
 server
+unit_test
 *.o
 *.dSYM
 
