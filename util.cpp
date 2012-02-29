@@ -1,4 +1,5 @@
 #include <iostream>
+#include <errno.h>
 
 using namespace std;
 
@@ -14,7 +15,7 @@ bool can_continue(int result, const char* operation) {
 size_t robust_read(int fd, void* buffer, size_t bufferSize) {
     size_t left = bufferSize;
     size_t dataRead;
-    char* pos = buffer;
+    char* pos = (char*)buffer;
 
     while (left > 0) {
         if ((dataRead = read(fd, pos, left)) < 0) {
@@ -34,7 +35,7 @@ size_t robust_read(int fd, void* buffer, size_t bufferSize) {
 size_t robust_write(int fd, void* buffer, size_t bufferSize) {
     size_t left = bufferSize;
     size_t dataWrite;
-    char* pos = buffer;
+    char* pos = (char*) buffer;
 
     while (left > 0) {
         if ((dataWrite = write(fd, pos, left)) <= 0) {

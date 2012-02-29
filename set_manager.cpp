@@ -9,6 +9,7 @@ void SetManager::remove(Value set_id, Value key) {
     pthread_mutex_lock(&set_collection_lock);
     SetCollection::iterator set_pos = set_collection.find(set_id);
     if (set_pos == set_collection.end()) {
+        pthread_mutex_unlock(&set_collection_lock);
         return; // nothing needs to be removed
     }
     set_pos->second.erase(key);

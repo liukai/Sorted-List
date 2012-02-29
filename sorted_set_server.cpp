@@ -1,15 +1,14 @@
 #include <unistd.h>
 #include <sys/socket.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <pthread.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <pthread.h>
+#include <iostream>
 #include "util.h"
 #include "sorted_set_server.h"
-
-#include <iostream>
 using namespace std;
 
 SortedSetServer::~SortedSetServer() {
@@ -81,7 +80,20 @@ int SortedSetServer::initialze_socket() {
 }
 
 void* SortedSetServer::handle_request(void* args) {
-    cout<<"new client"<<endl;
+    int* client_socket = (int*) args;
+
+    static const int BUFFER_SIZE = 1024;
+    char buffer[BUFFER_SIZE] = { '\0' };
+    int bufferRead = 0;
+    while ((bufferRead = robust_read(*client_socket, buffer, BUFFER_SIZE)) > 0) {
+        cout<<string(buffer, bufferRead)<<endl;
+        robust_write(*client_socket, buffer, bufferRead);        
+    }
+    if (bufferRead < 0)
+        cerr<<"Error occurs while reading from client"<<endl;
+
+    close(*client_socket);
+    delete client_socket;
     return NULL;
 }
 void SortedSetServer::start_server() {
@@ -92,15 +104,9 @@ void SortedSetServer::start_server() {
     socklen_t sin_size = sizeof(struct sockaddr_in);
 
     while(true) {
-        int message_socket = accept(server_socket, (sockaddr *) &client_address, &sin_size);
-        if(can_continue(message_socket, "accept()")) {
-            /*
-            receive_args* args = malloc(sizeof(receive_args));
-            args->server = server;
-            args->incoming_socket = message_socket;
-            args->client_address = client_address;
-            */
-            pthread_create(&receive_thread, NULL, handle_request, NULL);
+        int client_socket = accept(server_socket, (sockaddr *) &client_address, &sin_size);
+        if(can_continue(client_socket, "accept()")) {
+            pthread_create(&receive_thread, NULL, handle_request, new int(client_socket));
         }
     }
 }

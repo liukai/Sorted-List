@@ -13,7 +13,9 @@ class SetManager {
 public:
     static const Value INVALID = (Value)(-1);
 
-    SetManager() { pthread_mutex_init(&set_collection_lock, NULL); };
+    SetManager() {
+        pthread_mutex_init(&set_collection_lock, NULL);
+    }
     ~SetManager() {
         pthread_mutex_destroy(&set_collection_lock);
     }
