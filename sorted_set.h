@@ -1,5 +1,5 @@
-#ifndef QUORA_SET_MANAGER_H
-#define QUORA_SET_MANAGER_H
+#ifndef QUORA_SORTED_LIST_H
+#define QUORA_SORTED_LIST_H
 
 #include <map>
 #include <pthread.h>
@@ -7,16 +7,16 @@
 typedef unsigned short Value;
 
 // Concurrency control
-class SetManager {
+class SortedSet {
     typedef std::map<Value, Value> Set;
     typedef std::map<Value, Set> SetCollection;    
 public:
     static const Value INVALID = (Value)(-1);
 
-    SetManager() {
+    SortedSet() {
         pthread_mutex_init(&set_collection_lock, NULL);
     }
-    ~SetManager() {
+    ~SortedSet() {
         pthread_mutex_destroy(&set_collection_lock);
     }
 

@@ -11,7 +11,7 @@
 using namespace std;
 
 void test_sorted_set() {
-    SetManager manager;
+    SortedSet manager;
 
     // test the add operation
     assert(manager.size(1) == 0);
@@ -35,21 +35,21 @@ void test_sorted_set() {
     // test invalid "get" and "size" operation
     // -- set exists, key doesn't exist
     assert(manager.size(0) == 0);
-    assert(manager.get(1, 0) == SetManager::INVALID);
+    assert(manager.get(1, 0) == SortedSet::INVALID);
     // -- set doesn't exists
-    assert(manager.get(0, 0) == SetManager::INVALID);
+    assert(manager.get(0, 0) == SortedSet::INVALID);
 
     // remove test
     // -- erase existing item
     manager.remove(1, 2);
     assert(manager.size(1) == 2);
-    assert(manager.get(1, 2) == SetManager::INVALID);
+    assert(manager.get(1, 2) == SortedSet::INVALID);
     // -- erase set that doesn't exist
     manager.remove(0, 2);
     // -- erase key that doesn't exist
     manager.remove(1, 2);
     assert(manager.size(1) == 2);
-    assert(manager.get(1, 2) == SetManager::INVALID);
+    assert(manager.get(1, 2) == SortedSet::INVALID);
 }
 
 void add_one(int key, int value, void* arg) {

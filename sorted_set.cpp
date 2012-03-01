@@ -1,11 +1,11 @@
 #include "sorted_set.h"
 
-void SetManager::add(Value set_id, Value key, Value score) {
+void SortedSet::add(Value set_id, Value key, Value score) {
     pthread_mutex_lock(&set_collection_lock);
     set_collection[set_id][key] = score;
     pthread_mutex_unlock(&set_collection_lock);
 }
-void SetManager::remove(Value set_id, Value key) {
+void SortedSet::remove(Value set_id, Value key) {
     pthread_mutex_lock(&set_collection_lock);
     SetCollection::iterator set_pos = set_collection.find(set_id);
     if (set_pos == set_collection.end()) {
@@ -15,7 +15,7 @@ void SetManager::remove(Value set_id, Value key) {
     set_pos->second.erase(key);
     pthread_mutex_unlock(&set_collection_lock);
 }
-Value SetManager::get(Value set_id, Value key) const {
+Value SortedSet::get(Value set_id, Value key) const {
     SetCollection::const_iterator set_pos = set_collection.find(set_id);
     if (set_pos == set_collection.end())
         return INVALID;
@@ -24,7 +24,7 @@ Value SetManager::get(Value set_id, Value key) const {
         return INVALID;
     return key_pos->second;
 }
-Value SetManager::size(Value set_id) const {
+Value SortedSet::size(Value set_id) const {
     SetCollection::const_iterator pos = set_collection.find(set_id);
     return pos == set_collection.end() ? 0 : (Value)pos->second.size();
 }
