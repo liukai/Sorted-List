@@ -1,4 +1,7 @@
 #include <cassert>
+#include <ctime>
+#include <cmath>
+
 #include <iostream>
 #include "set_manager.h"
 #include "hash_map.h"
@@ -53,72 +56,88 @@ void add_one(int key, int value, void* arg) {
     int* pCount = (int*) arg;
     (*pCount) += 1;
 }
-void test_skip_list_functionality() {
-    SkipList<int, int> skip_list(-1);
+
+template <class TDict>
+void test_dict_functionality(TDict& dict) {
     int expected_size = 0;
     // Insert some nodes in a reverse way ...
     for (int i = 300; i >= 0; --i) {
-        const int* pVal = NULL;
+        int* pVal = NULL;
 
         int key = i * 2;
         int val = i;
-        skip_list.add(key, i);
+        assert(!dict.containsKey(key));
+        dict.add(key, i);
         expected_size += 1;
 
-        assert(skip_list.containsKey(key));
-        assert(skip_list.get(key, pVal));
+        assert(dict.containsKey(key));
+        assert(dict.get(key, pVal));
         assert(*pVal == val);
-        assert(expected_size == skip_list.size());
+        assert(expected_size == dict.size());
     }
 
     // Check some non-existing items ...
     for (int i = 1000; i < 1100; ++i) {
-        const int* pVal = NULL;
-        assert(!skip_list.get(i, pVal));
-        assert(!skip_list.containsKey(i));
+        int* pVal = NULL;
+        assert(!dict.get(i, pVal));
+        assert(!dict.containsKey(i));
     }
-
-    // Test the range
-    int count = 0;
-    skip_list.range(10, 18, add_one, &count);
-    assert(count == 5);
-    count = 0;
-    skip_list.range(9, 19, add_one, &count);
-    assert(count == 5);
-    count = 0;
-    skip_list.range(10, 19, add_one, &count);
-    assert(count == 5);
-    count = 0;
-    skip_list.range(9, 18, add_one, &count);
-    assert(count == 5);
-
-    count = 0;
-    skip_list.range(7, 12, add_one, &count);
-    assert(count == 3);
 
     // Test the remove
     for (int i = 0; i < 50; i += 3) {
-        const int* pVal = NULL;
+        int* pVal = NULL;
         int key = i * 2;
-        skip_list.remove(key);
-        assert(!skip_list.containsKey(key));
-        assert(!skip_list.get(key, pVal));
+        dict.remove(key);
+        assert(!dict.containsKey(key));
+        assert(!dict.get(key, pVal));
+    }
+    
+    // add back the removed items
+    for (int i = 0; i < 50; i += 3) {
+        int* pVal = NULL;
+        int key = i * 2;
+        int val = i - 1;
+        dict.add(key, val);
+        assert(dict.containsKey(key));
+        assert(dict.get(key, pVal));
+        assert(*pVal == val);
     }
 }
 inline int self(const int& item) { return item; }
 
+void test_skip_list() {
+    SkipList<int, int> dict(-1);
+    test_dict_functionality(dict);
+
+    // Test the range
+    int count = 0;
+    dict.range(10, 18, add_one, &count);
+    assert(count == 5);
+    count = 0;
+    dict.range(9, 19, add_one, &count);
+    assert(count == 5);
+    count = 0;
+    dict.range(10, 19, add_one, &count);
+    assert(count == 5);
+    count = 0;
+    dict.range(9, 18, add_one, &count);
+    assert(count == 5);
+
+    count = 0;
+    dict.range(7, 12, add_one, &count);
+    assert(count == 3);
+}
 void test_hash_set() {
     // http://primes.utm.edu/lists/small/100000.txt
-    int size = 2591;
-    HashMap<int, int> hash_map(1000, self);
-
+    HashMap<int, int> hash_map(1299827, self);
+    test_dict_functionality(hash_map);
 }
 
 // TODO: add description
 int main(int argc, char* argv[]) {
     test_hash_set();
+    test_skip_list();
     test_set_manager();
-    test_skip_list_functionality();
 
     return 0;
 }

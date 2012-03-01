@@ -3,6 +3,10 @@
 
 #include <pthread.h>
 
+
+#include <iostream>
+using namespace std;
+
 class Lockable {
 public:
     Lockable() {
@@ -40,7 +44,7 @@ public:
         unlock();
     }
     void decrease() {
-        read_lock();
+        write_lock();
         ++count;
         unlock();
     }
