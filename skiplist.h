@@ -4,7 +4,7 @@
 #include <vector>
 #include "lockable.h"
 
-const int MAX_LEVEL = 8;
+const int DEFAULT_LEVEL = 16;
 
 template <class TKey, class TValue>
 struct SkipNode : Lockable {
@@ -22,9 +22,8 @@ class SkipList {
 public:
     typedef void Callback(TKey, TValue,void*);
     // TODO: this is not a good idea
-    SkipList(const TKey& defaultKey = TKey()): count(0) {
-        header = new SkipNode<TKey, TValue>(MAX_LEVEL, defaultKey, TValue());
-        level = 0;
+    SkipList(const TKey& defaultKey = TKey(), int max_level = DEFAULT_LEVEL): count(0), max_level(max_level) {
+        header = new SkipNode<TKey, TValue>(DEFAULT_LEVEL, defaultKey, TValue()); level = 0;
 
         pthread_rwlock_init(&count_lock, NULL);
     }
@@ -33,7 +32,7 @@ public:
         pthread_rwlock_destroy(&count_lock);
     }
 
-    // QUERY
+    // QUERIES
     bool containsKey(const TKey& key) const;
     bool get(const TKey &key, const TValue*& pVal) const;
     void range(const TKey& from, const TKey& to, Callback callback, void* args) const;
@@ -45,17 +44,19 @@ public:
         return size; 
     }
 
-    // COMMAND
+    // COMMANDS
     void add(const TKey& key, const TValue& value);
     void print() const;
     void remove(const TKey& key);
 private:
     const SkipNode<TKey, TValue>* find(const TKey& key) const;
-    SkipNode<TKey, TValue> *header;
-    int level;
+    int get_random_level();
 
     mutable pthread_rwlock_t count_lock;
+    SkipNode<TKey, TValue> *header;
     int count;
+    int max_level;
+    int level;
 };
 
 // Since for template class, theoretically, should be in the header file 
