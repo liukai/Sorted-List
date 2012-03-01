@@ -1,7 +1,7 @@
 #ifndef QUORA_SORTED_SET_SERVER_H
 #define QUORA_SORTED_SET_SERVER_H
 
-#include "set_manager.h"
+#include "sorted_set.h"
 #include "operations.h"
 
 class SortedSetServer {

@@ -3,14 +3,14 @@
 #include <cmath>
 
 #include <iostream>
-#include "set_manager.h"
+#include "sorted_set.h"
 #include "hash_map.h"
 #include "skiplist.h"
 #include "util.h"
 
 using namespace std;
 
-void test_set_manager() {
+void test_sorted_set() {
     SetManager manager;
 
     // test the add operation
@@ -137,7 +137,7 @@ void test_hash_set() {
 int main(int argc, char* argv[]) {
     test_hash_set();
     test_skip_list();
-    test_set_manager();
+    test_sorted_set();
 
     return 0;
 }

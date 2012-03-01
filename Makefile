@@ -3,15 +3,15 @@ CXX=g++
 CPPFLAGS=-g -Wall
 LIBS=-lpthread
 
-SERVER_OBJECTS=sorted_set_server.o util.o set_manager.o operations.o hash_map.o
-UNIT_TEST_OBJECTS=set_manager.o skiplist.o hash_map.o
+SERVER_OBJECTS=sorted_set_server.o util.o sorted_set.o operations.o hash_map.o
+UNIT_TEST_OBJECTS=sorted_set.o skiplist.o hash_map.o
 CLIENT_OBJECTS=util.o operations.o
 
 .PHONY: all clean
 
 all: server unit_test client
 
-server: sorted_set.cpp $(SERVER_OBJECTS)
+server: run_server.cpp $(SERVER_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(LIBS) -o $@ $^
 	# Run unit test after recompilation
 	make unit_test
