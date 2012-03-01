@@ -18,7 +18,7 @@ public:
         pthread_mutex_unlock(&mutex);
     }
 private:
-    pthread_mutex_lock mutex;
+    pthread_mutex_t mutex;
 };
 
 #endif
