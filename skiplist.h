@@ -7,7 +7,7 @@
 const int DEFAULT_LEVEL = 16;
 
 template <class TKey, class TValue>
-struct SkipNode : Lockable {
+struct SkipNode : public Lockable {
     TKey key;
     TValue value;
     std::vector<SkipNode<TKey, TValue>*> next; // pointer to the next neighbors
@@ -20,16 +20,14 @@ struct SkipNode : Lockable {
 template <class TKey, class TValue>
 class SkipList {
 public:
-    typedef void Callback(TKey, TValue,void*);
+    typedef void (*Callback)(TKey, TValue,void*);
     // TODO: this is not a good idea
-    SkipList(const TKey& defaultKey = TKey(), int max_level = DEFAULT_LEVEL): count(0), max_level(max_level) {
+    SkipList(const TKey& defaultKey = TKey(), 
+             int max_level = DEFAULT_LEVEL): max_level(max_level) {
         header = new SkipNode<TKey, TValue>(DEFAULT_LEVEL, defaultKey, TValue()); level = 0;
-
-        pthread_rwlock_init(&count_lock, NULL);
     }
     ~SkipList() {
         delete header;
-        pthread_rwlock_destroy(&count_lock);
     }
 
     // QUERIES
@@ -37,24 +35,18 @@ public:
     bool get(const TKey &key, const TValue*& pVal) const;
     void range(const TKey& from, const TKey& to, Callback callback, void* args) const;
     int size() const {
-        pthread_rwlock_rdlock(&count_lock);
-        int size = count;
-        pthread_rwlock_unlock(&count_lock);
-
-        return size; 
+        return counter.get();
     }
 
     // COMMANDS
     void add(const TKey& key, const TValue& value);
-    void print() const;
     void remove(const TKey& key);
 private:
     const SkipNode<TKey, TValue>* find(const TKey& key) const;
     int get_random_level();
 
-    mutable pthread_rwlock_t count_lock;
     SkipNode<TKey, TValue> *header;
-    int count;
+    SafeCounter counter;
     int max_level;
     int level;
 };

@@ -115,9 +115,7 @@ void SkipList<TKey, TValue>::add(const TKey& key, const TValue& value) {
         }
 
     }
-    pthread_rwlock_wrlock(&count_lock);
-    ++count;
-    pthread_rwlock_unlock(&count_lock);
+    counter.increase();
 }
 
 template <class TKey, class TValue>
@@ -146,9 +144,8 @@ void SkipList<TKey, TValue>::remove(const TKey &key) {
         }
 
     }
-    pthread_rwlock_wrlock(&count_lock);
-    --count;
-    pthread_rwlock_unlock(&count_lock);
+
+    counter.decrease();
 }
 
 #endif

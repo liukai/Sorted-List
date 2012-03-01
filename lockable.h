@@ -6,19 +6,46 @@
 class Lockable {
 public:
     Lockable() {
-        pthread_mutex_init(&mutex, NULL);
+        pthread_rwlock_init(&lock, NULL);
     }
     virtual ~Lockable() {
-        pthread_mutex_destroy(&mutex);
+        pthread_rwlock_destroy(&lock);
     }
-    void lock() {
-        pthread_mutex_lock(&mutex);
+
+    void read_lock() const {
+        pthread_rwlock_rdlock(&lock);
     }
-    void unlock() {
-        pthread_mutex_unlock(&mutex);
+    void write_lock() const {
+        pthread_rwlock_wrlock(&lock);
+    }
+    void unlock() const {
+        pthread_rwlock_unlock(&lock);
     }
 private:
-    pthread_mutex_t mutex;
+    mutable pthread_rwlock_t lock;
+};
+
+class SafeCounter: public Lockable {
+public:
+    SafeCounter(): count(0) {}
+    int get() const { 
+        read_lock();
+        int c = count;
+        unlock();
+        return c;
+    }
+    void increase() {
+        write_lock();
+        ++count;
+        unlock();
+    }
+    void decrease() {
+        read_lock();
+        ++count;
+        unlock();
+    }
+private:
+    int count;
 };
 
 #endif
