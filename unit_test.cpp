@@ -1,11 +1,13 @@
 #include <cassert>
 #include <iostream>
 #include "set_manager.h"
+#include "hash_map.h"
 #include "skiplist.h"
+#include "util.h"
 
 using namespace std;
 
-void set_manager_test() {
+void test_set_manager() {
     SetManager manager;
 
     // test the add operation
@@ -103,15 +105,20 @@ void test_skip_list_functionality() {
         assert(!skip_list.get(key, pVal));
     }
 }
+inline int self(const int& item) { return item; }
+
+void test_hash_set() {
+    // http://primes.utm.edu/lists/small/100000.txt
+    int size = 2591;
+    HashMap<int, int> hash_map(1000, self);
+
+}
 
 // TODO: add description
 int main(int argc, char* argv[]) {
-    set_manager_test();
+    test_hash_set();
+    test_set_manager();
     test_skip_list_functionality();
 
     return 0;
 }
-
-
-
-

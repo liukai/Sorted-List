@@ -3,8 +3,8 @@ CXX=g++
 CPPFLAGS=-g -Wall
 LIBS=-lpthread
 
-SERVER_OBJECTS=sorted_set_server.o util.o set_manager.o operations.o
-UNIT_TEST_OBJECTS=set_manager.o skiplist.o
+SERVER_OBJECTS=sorted_set_server.o util.o set_manager.o operations.o hash_map.o
+UNIT_TEST_OBJECTS=set_manager.o skiplist.o hash_map.o
 CLIENT_OBJECTS=util.o operations.o
 
 .PHONY: all clean
