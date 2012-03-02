@@ -3,7 +3,7 @@ CXX=g++
 CPPFLAGS=-g -Wall
 LIBS=-lpthread
 
-SERVER_OBJECTS=sorted_set_server.o util.o sorted_set.o operations.o hash_map.o
+SERVER_OBJECTS=server.o util.o sorted_set.o operations.o hash_map.o skiplist.o 
 UNIT_TEST_OBJECTS=sorted_set.o skiplist.o hash_map.o
 CLIENT_OBJECTS=util.o operations.o
 
@@ -25,4 +25,4 @@ client: client.cpp $(CLIENT_OBJECTS)
 	$(CXX) $(CPPFLAGS) -c -o $@ $<
 
 clean:
-	rm -rf $(SERVER_OBJECTS) server unit_test client *.dSYM
+	rm -rf *.o server unit_test client *.dSYM

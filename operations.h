@@ -3,6 +3,7 @@
 
 enum Opeation { ADD = 1, REM = 2, SIZE, GET, GETRANGE };
 
+// OperationRuler represents the operation-related rules
 class OperationRuler {
 public:
     static const int ARBITARY = -1;

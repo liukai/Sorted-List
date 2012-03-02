@@ -1,4 +1,4 @@
-#include "sorted_set_server.h"
+#include "server.h"
 
 #include "sorted_set.h"
 #include <iostream>

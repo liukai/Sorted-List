@@ -2,6 +2,7 @@
 #define QUORA_UTIL_H
 
 typedef int Value;
+const int InvalidValue = -1;
 const int MinValue = 0;
 const int MaxValue = 2147483647;
 
