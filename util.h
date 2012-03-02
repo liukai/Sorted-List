@@ -4,6 +4,8 @@
 
 typedef int Value;
 const int InvalidValue = -1;
+// NetworkOrderInvalidValue is the network ordered representation
+// of InvalidValue
 const int NetworkOrderInvalidValue = htonl(InvalidValue);
 const int MinValue = 0;
 const int MaxValue = 2147483647;

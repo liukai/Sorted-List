@@ -17,6 +17,7 @@ class HashMap {
 public:
     typedef int (*HashFunction) (const TKey&);
     typedef void (ForeachAction) (const TKey&, TValue&);
+
     HashMap(int max_size, HashFunction fun): table(max_size), get_hash_code(fun) {
         locks = new Lockable[max_size];
     }
@@ -27,7 +28,6 @@ public:
     // QUERIES
     bool containsKey(const TKey& key);
     bool get(const TKey &key, TValue& pVal); 
-    void safe_get(const TKey &key, TValue& value);
     int size() const {
         return counter.get();
     }
@@ -41,6 +41,8 @@ private:
     int get_bucket_id(const TKey& key) {
         return get_hash_code(key) % table.size();
     }
+    // find a slot with a specific key in a bucket, it will return
+    // bucket.end() if nothing found
     SlotPointer find_slot(Bucket& bucket, const TKey& key) {
         for(SlotPointer pos = bucket.begin(); pos != bucket.end(); ++pos) {
             if (pos->first == key)
@@ -53,7 +55,6 @@ private:
     SafeCounter counter;
     HashFunction get_hash_code;
     Lockable* locks;
-    //std::vector<Lockable> locks;
 };
 
 template <class TKey, class TValue>
@@ -86,15 +87,6 @@ bool HashMap<TKey, TValue>::get(const TKey &key, TValue& val) {
 }
 
 template <class TKey, class TValue>
-void HashMap<TKey, TValue>::safe_get(const TKey &key, TValue& value) {
-    if (!get(key, value)) {
-        add(key, TValue());
-        get(key, value);
-    }
-}
-
-
-template <class TKey, class TValue>
 void HashMap<TKey, TValue>::add(const TKey& key, const TValue& value) {
     int bucket_id = get_bucket_id(key);
     Bucket& bucket = table[bucket_id];
@@ -118,7 +110,8 @@ void HashMap<TKey, TValue>::remove(const TKey& key) {
     locks[bucket_id].write_lock();
 
     SlotPointer slot = find_slot(bucket, key);
-    if (slot != bucket.end()) { // Delete item
+    // nothing will happen when the key doesn't exist
+    if (slot != bucket.end()) {
         bucket.erase(slot);
         counter.decrease();
     }

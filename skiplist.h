@@ -27,7 +27,10 @@ class SkipList {
     typedef std::vector<Node*> NodeList;
 public:
     typedef void (*Callback)(const TKey&, const TValue&, void*);
-    // TODO: this is not a good idea
+    // @defaultKey: the header node is only a sentinel node, it 
+    // should choose a "default key" that could differentiate 
+    // itself from "normal" nodes.
+    // TODO: this design is not very good
     SkipList(const TKey& defaultKey = TKey(), 
              int max_level = DEFAULT_LEVEL): max_level(max_level) {
         header = new Node(DEFAULT_LEVEL, defaultKey, TValue()); level = 0;
@@ -39,6 +42,9 @@ public:
     // QUERIES
     bool containsKey(const TKey& key);
     bool get(const TKey &key, TValue& val);
+    // range() will find the item with key ranging between [from, to].
+    // Whenever an item is found, range() will invoke 'callback()' with 
+    // 'args' as the callback parameter.
     void range(const TKey& from, const TKey& to, Callback callback, void* args);
     int size() const {
         return counter.get();
@@ -47,9 +53,10 @@ public:
     // COMMANDS
     void add(const TKey& key, const TValue& value);
     void remove(const TKey& key);
-    // TODO: ambiguous
 private:
     Node* find(const TKey& key);
+    // get_random_level() will generate the level at a "certain" probability
+    // It will ensure the generated levels that could yield efficient structure.
     int get_random_level();
     static void release_locks(std::set<Node*>& nodes) {
         for (typename std::set<Node*>::iterator pos = nodes.begin();
@@ -81,14 +88,12 @@ int SkipList<TKey, TValue>::get_random_level() {
         first_time = false;
     }
 
-    // TODO: make sense of this
     // generate the level with a certain probability
     float rand_num = (float) rand() / RAND_MAX;
     int level = (int)(log(rand_num) / log(1 - P));
     return level < max_level ? level : max_level;
 }
 
-// TODO: the returned node is with readlock open.
 template <class TKey, class TValue>
 SkipNode<TKey, TValue>* SkipList<TKey, TValue>::find(const TKey &key) {
     Node *pos = header;
