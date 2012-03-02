@@ -116,8 +116,6 @@ int main(int argc, char* argv[]) {
         buffer[bytes] = '\0';        
         fprintf(stdout, buffer);
     }
-
-
     */
 
     close(sock);

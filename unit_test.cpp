@@ -140,6 +140,11 @@ void test_skip_list() {
     assert(count == 5);
 
     count = 0;
+    dict.range(9, 9, add_one, &count);
+    cout<<count<<endl;
+    assert(count == 0);
+
+    count = 0;
     dict.range(7, 12, add_one, &count);
     assert(count == 3);
 }
@@ -151,9 +156,9 @@ void test_hash_set() {
 
 // TODO: add description
 int main(int argc, char* argv[]) {
-    test_hash_set();
     test_skip_list();
-    test_sorted_set();
+    // test_hash_set();
+    // test_sorted_set();
 
     return 0;
 }

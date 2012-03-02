@@ -5,6 +5,8 @@
 #include "lockable.h"
 #include <ctime>
 #include <cmath>
+#include <cassert>
+#include <set>
 
 const int DEFAULT_LEVEL = 16;
 
@@ -12,7 +14,7 @@ template <class TKey, class TValue>
 struct SkipNode : public Lockable {
     TKey key;
     TValue value;
-    std::vector<SkipNode<TKey, TValue>*> next; // pointer to the next neighbors
+    std::vector<SkipNode<TKey, TValue>*> next;
 
     SkipNode(int level, const TKey& key, const TValue& value)
                 : key(key), value(value), next(level + 1) {
@@ -21,12 +23,14 @@ struct SkipNode : public Lockable {
 
 template <class TKey, class TValue>
 class SkipList {
+    typedef SkipNode<TKey, TValue> Node;
+    typedef std::vector<Node*> NodeList;
 public:
     typedef void (*Callback)(TKey, TValue,void*);
     // TODO: this is not a good idea
     SkipList(const TKey& defaultKey = TKey(), 
              int max_level = DEFAULT_LEVEL): max_level(max_level) {
-        header = new SkipNode<TKey, TValue>(DEFAULT_LEVEL, defaultKey, TValue()); level = 0;
+        header = new Node(DEFAULT_LEVEL, defaultKey, TValue()); level = 0;
     }
     ~SkipList() {
         delete header;
@@ -43,11 +47,24 @@ public:
     // COMMANDS
     void add(const TKey& key, const TValue& value);
     void remove(const TKey& key);
+    // TODO: ambiguous
 private:
-    SkipNode<TKey, TValue>* find(const TKey& key);
+    Node* find(const TKey& key);
     int get_random_level();
+    static void release_locks(std::set<Node*>& nodes) {
+        for (typename std::set<Node*>::iterator pos = nodes.begin();
+             pos != nodes.end(); ++pos) {
+            (*pos)->unlock();
+        }
+    }
+    static void add_lock_if_unlocked(std::set<Node*>& nodes, Node* node) {
+        if (node != NULL && nodes.find(node) == nodes.end()) {
+            node->write_lock();
+            nodes.insert(node);
+        }
+    }
 
-    SkipNode<TKey, TValue> *header;
+    Node *header;
     SafeCounter counter;
     int max_level;
     int level;
@@ -71,109 +88,170 @@ int SkipList<TKey, TValue>::get_random_level() {
     return level < max_level ? level : max_level;
 }
 
+// TODO: the returned node is with readlock open.
 template <class TKey, class TValue>
 SkipNode<TKey, TValue>* SkipList<TKey, TValue>::find(const TKey &key) {
-    SkipNode<TKey, TValue> *pos = header;
+    Node *pos = header;
+
+    pos->read_lock();
     for (int i = level; i >= 0; i--) {
         while (pos->next[i] != NULL && pos->next[i]->key < key) {
-            pos = pos->next[i];
+            Node* next = pos->next[i];
+            next->read_lock();
+
+            pos->unlock();
+            pos = next;
+        }
+        if (pos->next[i] != NULL && pos->next[i]->key == key) {
+            Node* next = pos->next[i];
+            next->read_lock();
+            pos->unlock();
+
+            return next;
         }
     }
-    return pos->next[0] == NULL ? NULL :
-        (pos->next[0]->key == key) ? pos->next[0] :
-        pos;
+    pos->unlock();
+    return NULL;
 }
+
 template <class TKey, class TValue>
 bool SkipList<TKey, TValue>::containsKey(const TKey &key) {
-    const SkipNode<TKey, TValue>* node = find(key);
-    return node != NULL && node->key == key;
+    TValue val;
+    return get(key, val);
 }
 template <class TKey, class TValue>
 bool SkipList<TKey, TValue>::get(const TKey &key, TValue& val) {
-    SkipNode<TKey, TValue>* node = find(key);
-    if (node == NULL)
-        return false;
+    Node *pos = header;
 
-    if (key == node->key) {
-        val = node->value;
-        return true;
-    } else {
-        return false;
+    pos->read_lock();
+    for (int i = level; i >= 0; i--) {
+        while (pos->next[i] != NULL && pos->next[i]->key < key) {
+            Node* next = pos->next[i];
+            next->read_lock();
+
+            pos->unlock();
+            pos = next;
+        }
+        if (pos->next[i] != NULL && pos->next[i]->key == key) {
+            val = pos->next[i]->value;
+            pos->unlock();
+
+            return true;
+        }
     }
+    pos->unlock();
+    return false;
 }
 
 template <class TKey, class TValue>
 void SkipList<TKey, TValue>::range(const TKey& from, const TKey& to, 
         Callback callback, void* args) {
-    const SkipNode<TKey, TValue>* pos = header;    
+    const Node* pos = header;    
+    pos->read_lock();
+
     for (int i = level; i >= 0; i--) {
         while (pos->next[i] != NULL && pos->next[i]->key < from) {
-            pos = pos->next[i];
+            Node* next = pos->next[i];
+            next->read_lock();
+
+            pos->unlock();
+            pos = next;
         }
     }
 
     // left bound found
     // TODO: it is possible that pos is NULL
-    const SkipNode<TKey, TValue>* left = pos->next[0];
-    if (left == NULL)
-        return;
+    Node* left = pos->next[0];
+    left->read_lock();
+    pos->unlock();
+    pos = left;
+    
+    while (pos != NULL && pos->key <= to) {
+        callback(pos->key, pos->value, args);
 
-    for (int i = pos->next.size() - 1; i >= 0; i--) {
-        while (pos->next[i] != NULL && pos->next[i]->key <= to) {
-            pos = pos->next[i];
-        }
+        Node* next = pos->next[0];
+        if (next == NULL)
+            break;
+        next->read_lock();
+        pos->unlock();
+        pos = next;
     }
-    SkipNode<TKey, TValue>* right = pos->next[0];
-    for (;left != right; left = left->next[0]) {
-        callback(left->key, left->value, args);
-    }
+    pos->unlock();
 }
 
 template <class TKey, class TValue>
 void SkipList<TKey, TValue>::add(const TKey& key, const TValue& value) {
-    SkipNode<TKey, TValue> *pos = header;
-    std::vector<SkipNode<TKey, TValue>*> prev_list(max_level + 1);
+    Node* pos = header;
+    NodeList prev_list(max_level + 1, NULL);
+    set<Node*> locked_nodes;
 
-    // Find all the neighbors
-    // TODO: should be refactored
+    // Lock the first two elements
+    add_lock_if_unlocked(locked_nodes, pos);
+    prev_list[level] = pos;
+
     for (int i = level; i >= 0; i--) {
+        add_lock_if_unlocked(locked_nodes, pos->next[i]);
         while (pos->next[i] != NULL && pos->next[i]->key < key) {
+            assert(locked_nodes.find(pos) != locked_nodes.end());
+            pos->unlock();
+            locked_nodes.erase(pos);
+
             pos = pos->next[i];
+            assert(locked_nodes.find(pos) != locked_nodes.end());
+            // Always keep locking two related nodes
+            add_lock_if_unlocked(locked_nodes, pos->next[i]);
         }
+
+        // if the key already exists
+        if (pos->next[i] != NULL && pos->next[i]->key == key) {
+            pos->next[i]->value = value;
+            release_locks(locked_nodes);
+
+            return;
+        }
+
         prev_list[i] = pos; 
     }
 
     pos = pos->next[0];
-    if (pos == NULL || pos->key != key) {        
-        int new_level = get_random_level();
+    assert(pos == NULL || pos->key != key);
 
-        if (new_level > level) {
-            for (int i = level + 1; i <= new_level; i++) {
-                prev_list[i] = header;
-            }
-            level = new_level;
+    int new_level = get_random_level();
+    if (new_level > level) {
+        for (int i = level + 1; i <= new_level; i++) {
+            prev_list[i] = header;
         }
-
-        pos = new SkipNode<TKey, TValue>(new_level, key, value);
-        for (int i = 0; i <= new_level; i++) {
-            pos->next[i] = prev_list[i]->next[i];
-            prev_list[i]->next[i] = pos;
-        }
-        counter.increase();
-    } else if(pos != NULL)  {
-        // update the value
-        pos->value = value;
+        level = new_level;
     }
+
+    Node* new_node = new Node(new_level, key, value);
+    for (int i = 0; i <= new_level; i++) {
+        new_node->next[i] = prev_list[i]->next[i];
+        prev_list[i]->next[i] = new_node;
+    }
+    release_locks(locked_nodes);
+    counter.increase();
 }
 
 template <class TKey, class TValue>
 void SkipList<TKey, TValue>::remove(const TKey &key) {
-    SkipNode<TKey, TValue> *pos = header;    
-    std::vector<SkipNode<TKey, TValue>*> prev_list(max_level + 1);
+    Node *pos = header;    
+    NodeList prev_list(max_level + 1);
+    set<Node*> locked_nodes;
+    add_lock_if_unlocked(locked_nodes, pos);
 
     for (int i = level; i >= 0; i--) {
+        add_lock_if_unlocked(locked_nodes, pos->next[i]);
         while (pos->next[i] != NULL && pos->next[i]->key < key) {
+            assert(locked_nodes.find(pos) != locked_nodes.end());
+            pos->unlock();
+            locked_nodes.erase(pos);
+
             pos = pos->next[i];
+            assert(locked_nodes.find(pos) != locked_nodes.end());
+            // Always keep locking two related nodes
+            add_lock_if_unlocked(locked_nodes, pos->next[i]);
+            // pos = pos->next[i];
         }
         prev_list[i] = pos; 
     }
@@ -192,7 +270,7 @@ void SkipList<TKey, TValue>::remove(const TKey &key) {
         }
         counter.decrease();
     }
-
+    release_locks(locked_nodes);
 }
 
 #endif
