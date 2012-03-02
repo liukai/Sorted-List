@@ -26,7 +26,7 @@ class SkipList {
     typedef SkipNode<TKey, TValue> Node;
     typedef std::vector<Node*> NodeList;
 public:
-    typedef void (*Callback)(TKey, TValue,void*);
+    typedef void (*Callback)(const TKey&, const TValue&, void*);
     // TODO: this is not a good idea
     SkipList(const TKey& defaultKey = TKey(), 
              int max_level = DEFAULT_LEVEL): max_level(max_level) {
@@ -161,12 +161,15 @@ void SkipList<TKey, TValue>::range(const TKey& from, const TKey& to,
 
     // left bound found
     // TODO: it is possible that pos is NULL
+    if (pos->next[0] == NULL) {
+        return;
+    }
     Node* left = pos->next[0];
     left->read_lock();
     pos->unlock();
     pos = left;
     
-    while (pos != NULL && pos->key <= to) {
+    while (pos != NULL && (pos->key < to || pos->key == to)) {
         callback(pos->key, pos->value, args);
 
         Node* next = pos->next[0];
@@ -214,7 +217,7 @@ void SkipList<TKey, TValue>::add(const TKey& key, const TValue& value) {
     }
 
     pos = pos->next[0];
-    assert(pos == NULL || pos->key != key);
+    assert(pos == NULL || !(pos->key == key));
 
     int new_level = get_random_level();
     if (new_level > level) {

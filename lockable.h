@@ -17,15 +17,15 @@ public:
     }
 
     void read_lock() const {
-        cout<<"read lock: "<<&lock<<endl;
+        // cout<<"read lock: "<<&lock<<endl;
         pthread_rwlock_rdlock(&lock);
     }
     void write_lock() const {
-        cout<<"write lock: "<<&lock<<endl;
+        // cout<<"write lock: "<<&lock<<endl;
         pthread_rwlock_wrlock(&lock);
     }
     void unlock() const {
-        cout<<"unlock: "<<&lock<<endl;
+        // cout<<"unlock: "<<&lock<<endl;
         pthread_rwlock_unlock(&lock);
     }
 private:
@@ -36,20 +36,20 @@ class SafeCounter: public Lockable {
 public:
     SafeCounter(): count(0) {}
     int get() const { 
-        // read_lock();
+        read_lock();
         int c = count;
-        // unlock();
+        unlock();
         return c;
     }
     void increase() {
-        // write_lock();
+        write_lock();
         ++count;
-        // unlock();
+        unlock();
     }
     void decrease() {
-        // write_lock();
+        write_lock();
         --count;
-        // unlock();
+        unlock();
     }
 private:
     int count;

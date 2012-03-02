@@ -11,50 +11,82 @@
 using namespace std;
 
 void test_sorted_set() {
-    SortedSet manager(5209, 5209);
+    SortedSet sorted_set(5209, 5209);
 
     // test the add operation
-    assert(manager.size(1) == 0);
+    assert(sorted_set.size(1) == 0);
 
-    manager.add(1, 2, 3);
-    assert(manager.size(1) == 1);
-    assert(manager.get(1, 2) == 3);
+    sorted_set.add(1, 2, 3);
+    assert(sorted_set.size(1) == 1);
+    assert(sorted_set.get(1, 2) == 3);
 
-    manager.add(1, 1, 4);
-    assert(manager.size(1) == 2);
-    assert(manager.get(1, 1) == 4);
+    sorted_set.add(1, 1, 4);
+    assert(sorted_set.size(1) == 2);
+    assert(sorted_set.get(1, 1) == 4);
 
-    manager.add(1, 3, 2);
-    assert(manager.size(1) == 3);
-    assert(manager.get(1, 3) == 2);
+    sorted_set.add(1, 3, 2);
+    assert(sorted_set.size(1) == 3);
+    assert(sorted_set.get(1, 3) == 2);
 
-    manager.add(1, 2, 5);
-    assert(manager.size(1) == 3);
-    assert(manager.get(1, 2) == 5);
+    sorted_set.add(1, 2, 5);
+    assert(sorted_set.size(1) == 3);
+    assert(sorted_set.get(1, 2) == 5);
 
     // test invalid "get" and "size" operation
     // -- set exists, key doesn't exist
-    assert(manager.size(0) == 0);
-    assert(manager.get(1, 0) == SortedSet::INVALID);
+    assert(sorted_set.size(0) == 0);
+    assert(sorted_set.get(1, 0) == SortedSet::INVALID);
     // -- set doesn't exists
-    assert(manager.get(0, 0) == SortedSet::INVALID);
+    assert(sorted_set.get(0, 0) == SortedSet::INVALID);
 
     // remove test
     // -- erase existing item
-    manager.remove(1, 2);
-    assert(manager.size(1) == 2);
-    assert(manager.get(1, 2) == SortedSet::INVALID);
+    sorted_set.remove(1, 2);
+    assert(sorted_set.size(1) == 2);
+    assert(sorted_set.get(1, 2) == SortedSet::INVALID);
     // -- erase set that doesn't exist
-    manager.remove(0, 2);
+    sorted_set.remove(0, 2);
     // -- erase key that doesn't exist
-    manager.remove(1, 2);
-    assert(manager.size(1) == 2);
-    assert(manager.get(1, 2) == SortedSet::INVALID);
+    sorted_set.remove(1, 2);
+    assert(sorted_set.size(1) == 2);
+    assert(sorted_set.get(1, 2) == SortedSet::INVALID);
 }
 
-void add_one(int key, int value, void* arg) {
+void add_one(const int& key, const int& value, void* arg) {
     int* pCount = (int*) arg;
     (*pCount) += 1;
+}
+void add_one_1(const SortedSet::IndexKey& key, const int& value, void* arg) {
+    int* pCount = (int*) arg;
+    (*pCount) += 1;
+}
+
+void test_sorted_set_range() {
+    SortedSet set(5209, 5209);
+    int set_ids[] = {1, 2, 3, 4};
+
+    int count = 0;
+    for (int i = 0; i < 100; ++i) {
+        set.add(1, i, i);
+    }
+    set.get_range(set_ids, set_ids +1, 10, 20, add_one_1, &count);
+    assert(count == 11);
+
+    count = 0;
+    for (int i = 0; i < 100; ++i) {
+        int score = i * 2 + 1;
+        set.add(2, i, score);
+    }
+    set.get_range(set_ids + 1, set_ids + 2, 10, 20, add_one_1, &count);
+    assert(count == 5);
+
+    count = 0;
+    set.get_range(set_ids + 2, set_ids + 3, 10, 20, add_one_1, &count);
+    assert(count == 0);
+
+    count = 0;
+    set.get_range(set_ids, set_ids + 3, 10, 20, add_one_1, &count);
+    assert(count == 5 + 11);
 }
 
 template <class TDict>
@@ -141,7 +173,6 @@ void test_skip_list() {
 
     count = 0;
     dict.range(9, 9, add_one, &count);
-    cout<<count<<endl;
     assert(count == 0);
 
     count = 0;
@@ -157,8 +188,9 @@ void test_hash_set() {
 // TODO: add description
 int main(int argc, char* argv[]) {
     test_skip_list();
-    // test_hash_set();
-    // test_sorted_set();
+    test_hash_set();
+    test_sorted_set();
+    test_sorted_set_range();
 
     return 0;
 }

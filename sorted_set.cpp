@@ -16,6 +16,9 @@ void SortedSet::add(Value set_id, Value key, Value score) {
     }
     
     set->add(key, score);    
+
+    IndexKey indexKey(set_id, score, key);
+    indexer.add(indexKey, key);
 }
 void SortedSet::remove(Value set_id, Value key) {
     Set* set = NULL;
@@ -24,7 +27,12 @@ void SortedSet::remove(Value set_id, Value key) {
         return;
     }
 
-    set->remove(key);
+    Value score = INVALID;
+    if(set->get(key, score)) {
+        set->remove(key);
+        IndexKey indexKey(set_id, score, key);
+        indexer.remove(indexKey);
+    }
 }
 Value SortedSet::get(Value set_id, Value key) {
     Set* set = NULL;
@@ -34,7 +42,7 @@ Value SortedSet::get(Value set_id, Value key) {
     Value val = INVALID;
     return set->get(key, val) ? val : INVALID;
 }
-Value SortedSet::size(Value set_id){
+Value SortedSet::size(Value set_id) {
     Set* set = NULL;
     return sets.get(set_id, set) ? set->size() : 0;
 }

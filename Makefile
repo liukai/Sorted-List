@@ -21,7 +21,7 @@ unit_test: unit_test.cpp $(UNIT_TEST_OBJECTS)
 client: client.cpp $(CLIENT_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(LIBS) -o $@ $^
 
-$(BIN)/%.o: %.cpp %.h 
+%.o: %.cpp %.h 
 	$(CXX) $(CPPFLAGS) -c -o $@ $<
 
 clean:
