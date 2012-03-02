@@ -34,7 +34,7 @@ public:
 
     // QUERIES
     bool containsKey(const TKey& key);
-    bool get(const TKey &key, TValue*& pVal);
+    bool get(const TKey &key, TValue& val);
     void range(const TKey& from, const TKey& to, Callback callback, void* args);
     int size() const {
         return counter.get();
@@ -89,13 +89,13 @@ bool SkipList<TKey, TValue>::containsKey(const TKey &key) {
     return node != NULL && node->key == key;
 }
 template <class TKey, class TValue>
-bool SkipList<TKey, TValue>::get(const TKey &key, TValue*& pVal) {
+bool SkipList<TKey, TValue>::get(const TKey &key, TValue& val) {
     SkipNode<TKey, TValue>* node = find(key);
     if (node == NULL)
         return false;
 
     if (key == node->key) {
-        pVal = &(node->value);
+        val = node->value;
         return true;
     } else {
         return false;
@@ -159,9 +159,11 @@ void SkipList<TKey, TValue>::add(const TKey& key, const TValue& value) {
             pos->next[i] = prev_list[i]->next[i];
             prev_list[i]->next[i] = pos;
         }
-
+        counter.increase();
+    } else if(pos != NULL)  {
+        // update the value
+        pos->value = value;
     }
-    counter.increase();
 }
 
 template <class TKey, class TValue>
@@ -188,10 +190,9 @@ void SkipList<TKey, TValue>::remove(const TKey &key) {
         while (level > 0 && header->next[level] == NULL) {
             level--;
         }
-
+        counter.decrease();
     }
 
-    counter.decrease();
 }
 
 #endif

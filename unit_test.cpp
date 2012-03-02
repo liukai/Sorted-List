@@ -11,7 +11,7 @@
 using namespace std;
 
 void test_sorted_set() {
-    SortedSet manager;
+    SortedSet manager(5209, 5209);
 
     // test the add operation
     assert(manager.size(1) == 0);
@@ -62,7 +62,7 @@ void test_dict_functionality(TDict& dict) {
     int expected_size = 0;
     // Insert some nodes in a reverse way ...
     for (int i = 300; i >= 0; --i) {
-        int* pVal = NULL;
+        int actual_val = NULL;
 
         int key = i * 2;
         int val = i;
@@ -71,39 +71,55 @@ void test_dict_functionality(TDict& dict) {
         expected_size += 1;
 
         assert(dict.containsKey(key));
-        assert(dict.get(key, pVal));
-        assert(*pVal == val);
+        assert(dict.get(key, actual_val));
+        assert(actual_val == val);
+        assert(expected_size == dict.size());
+
+        // duplicate add
+        val = i * 2 + 1;
+        dict.add(key, val);
+        assert(dict.containsKey(key));
+        assert(dict.get(key, actual_val));
+        assert(actual_val == val);
         assert(expected_size == dict.size());
     }
 
     // Check some non-existing items ...
     for (int i = 1000; i < 1100; ++i) {
-        int* pVal = NULL;
-        assert(!dict.get(i, pVal));
+        int actual_val = NULL;
+        assert(!dict.get(i, actual_val));
         assert(!dict.containsKey(i));
     }
 
     // Test the remove
     for (int i = 0; i < 50; i += 3) {
-        int* pVal = NULL;
+        int actual_val = NULL;
         int key = i * 2;
         dict.remove(key);
+        --expected_size;
         assert(!dict.containsKey(key));
-        assert(!dict.get(key, pVal));
+        assert(!dict.get(key, actual_val));
+        assert(expected_size == dict.size());
+
+        dict.remove(key);
+        assert(!dict.containsKey(key));
+        assert(!dict.get(key, actual_val));
+        assert(expected_size == dict.size());
     }
     
     // add back the removed items
     for (int i = 0; i < 50; i += 3) {
-        int* pVal = NULL;
+        int actual_val = NULL;
         int key = i * 2;
         int val = i - 1;
         dict.add(key, val);
+        ++expected_size;
         assert(dict.containsKey(key));
-        assert(dict.get(key, pVal));
-        assert(*pVal == val);
+        assert(dict.get(key, actual_val));
+        assert(actual_val == val);
+        assert(expected_size == dict.size());
     }
 }
-inline int self(const int& item) { return item; }
 
 void test_skip_list() {
     SkipList<int, int> dict(-1);
@@ -129,7 +145,7 @@ void test_skip_list() {
 }
 void test_hash_set() {
     // http://primes.utm.edu/lists/small/100000.txt
-    HashMap<int, int> hash_map(1299827, self);
+    HashMap<int, int> hash_map(1299827, &naive_hash<int>);
     test_dict_functionality(hash_map);
 }
 

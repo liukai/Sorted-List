@@ -45,7 +45,7 @@ public:
     }
     void decrease() {
         write_lock();
-        ++count;
+        --count;
         unlock();
     }
 private:
