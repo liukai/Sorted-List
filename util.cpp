@@ -19,7 +19,7 @@ size_t robust_read(int fd, void* buffer, size_t bufferSize) {
 
     while (left > 0) {
         if ((dataRead = read(fd, pos, left)) < 0) {
-            if (errno == EINTR) // For EINTR we should resuem the read
+            if (errno == EINTR)
                 dataRead = 0;
             else
                 return -1;

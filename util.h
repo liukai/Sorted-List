@@ -1,8 +1,10 @@
 #ifndef QUORA_UTIL_H
 #define QUORA_UTIL_H
 
+
 typedef int Value;
 const int InvalidValue = -1;
+const int NetworkOrderInvalidValue = htonl(InvalidValue);
 const int MinValue = 0;
 const int MaxValue = 2147483647;
 

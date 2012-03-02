@@ -39,8 +39,8 @@ private:
     static void size(int client, Value* buffer, int buffer_size, SortedSet* set);
     static void get(int client, Value* buffer, int buffer_size, SortedSet* set);
     static void get_range(int client, Value* buffer, int buffer_size, SortedSet* set);
-    static CommandHandler commands[];
 
+    static CommandHandler commands[];
     static const int PORT_SIZE = 10;
     static CommandRules ruler;
 

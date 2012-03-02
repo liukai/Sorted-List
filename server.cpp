@@ -1,3 +1,5 @@
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <string.h>
@@ -5,6 +7,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <netinet/in.h>
+#include <algorithm>
 #include <netdb.h>
 #include <iostream>
 #include <vector>
@@ -12,6 +15,35 @@
 #include "server.h"
 using namespace std;
 
+// -- Utilities
+bool are_valid_values(Value* begin, Value* end) {
+    while (begin != end) {
+        if (*begin < 0)
+            return false;
+    }
+    return true;
+}
+void write_back(const SortedSet::IndexKey& indexKey, const Value& _, void* arg) {
+    int fd = *((int*)arg);
+    Value nsKey = htonl(indexKey.key);
+    Value nsScore = htonl(indexKey.score);
+    write(fd, &nsKey, sizeof(Value));
+    write(fd, &nsScore, sizeof(Value));
+}
+void to_host_order(Value* begin, Value* end) {
+    while (begin != end) {
+        *begin= ntohl(*begin);
+        ++begin;
+    }
+}
+void to_network_order(Value* begin, Value* end) {
+    while (begin != end) {
+        *begin= htonl(*begin);
+        ++begin;
+    }
+}
+
+// -- SortedSetServer 
 CommandRules SortedSetServer::ruler;
 SortedSetServer::CommandHandler SortedSetServer::commands[] = {
     add, remove, size, get, get_range
@@ -121,6 +153,7 @@ void* SortedSetServer::handle_request(void* args) {
         return NULL;
     }
 
+    to_host_order(buffer, buffer + bufferRead);
     Command op = (Command)buffer[0];
     if (!ruler.is_valid_op(op)) {
         close_client_socket(arguments, "Invalid operator");
@@ -144,7 +177,7 @@ void* SortedSetServer::handle_request(void* args) {
 void SortedSetServer::close_client_socket(ThreadArgs* args, const char* error_message) {
     int fd = args->first;
     if (error_message == NULL) {
-        write(fd, &InvalidValue, sizeof(Value));
+        write(fd, &NetworkOrderInvalidValue, sizeof(Value));
         cerr<<"[Error] "<<error_message<<endl;
     }
 
@@ -154,28 +187,38 @@ void SortedSetServer::close_client_socket(ThreadArgs* args, const char* error_me
 
 // Command handlers
 void SortedSetServer::add(int client, Value* buffer, int buffer_size, SortedSet* set) {
+    if (!are_valid_values(buffer, buffer + 3)) {
+        write(client, &NetworkOrderInvalidValue, sizeof(Value));
+        return;
+    }
     set->add(buffer[0], buffer[1], buffer[2]);
 }
 void SortedSetServer::remove(int client, Value* buffer, int buffer_size, SortedSet* set) {
+    if (!are_valid_values(buffer, buffer + 2)) {
+        write(client, &NetworkOrderInvalidValue, sizeof(Value));
+        return;
+    }
     set->remove(buffer[0], buffer[1]);
 }
 void SortedSetServer::size(int client, Value* buffer, int buffer_size, SortedSet* set) {
+    if (!are_valid_values(buffer, buffer + 1)) {
+        write(client, &NetworkOrderInvalidValue, sizeof(Value));
+        return;
+    }
     Value size = set->size(buffer[0]);
-    write(client, &size, sizeof(Value));
+    size = htons(size);
+    to_network_order(&size, &size + 1);
+    robust_write(client, &size, sizeof(Value));
 }
 void SortedSetServer::get(int client, Value* buffer, int buffer_size, SortedSet* set) {
     // If the value doesn't exist, set->get() will return InvalidValue(-1)
     Value val = set->get(buffer[0], buffer[1]);
-    write(client, &val, sizeof(Value));
-}
-void write_back(const SortedSet::IndexKey& indexKey, const Value& _, void* arg) {
-    int fd = *((int*)arg);
-    write(fd, &indexKey.key, sizeof(Value));
-    write(fd, &indexKey.score, sizeof(Value));
+    val = htons(val);
+    robust_write(client, &val, sizeof(Value));
 }
 void SortedSetServer::get_range(int client, Value* buffer, 
                                 int buffer_size, SortedSet* set) {
-    Value* set_id_start = buffer;
+    Value* set_id_begin = buffer;
     Value* buffer_end = buffer + buffer_size;
 
     while (buffer != buffer_end && *buffer != InvalidValue) {
@@ -185,18 +228,29 @@ void SortedSetServer::get_range(int client, Value* buffer,
 
     // Missing the "-1" as the separator?
     if (*buffer != InvalidValue) {
-        write(client, &InvalidValue, sizeof(Value));
+        write(client, &NetworkOrderInvalidValue, sizeof(Value));
+        return;
+    }
+    // check the validity of the set ids
+    if (!are_valid_values(set_id_begin, set_id_end)) {
+        write(client, &NetworkOrderInvalidValue, sizeof(Value));
         return;
     }
 
     ++buffer; // skip the "-1" separator
     // check if there are enough room for "lower" and "upper"
     if (buffer_end - buffer < 2) {
-        write(client, &InvalidValue, sizeof(Value));
+        write(client, &NetworkOrderInvalidValue, sizeof(Value));
+        return;
+    }
+    // check the validity of the "lower" and "upper"
+    if (!are_valid_values(set_id_begin, set_id_end)) {
+        write(client, &NetworkOrderInvalidValue, sizeof(Value));
         return;
     }
     Value lower = buffer[0];
     Value upper = buffer[1];
-    set->get_range(set_id_start, set_id_end, lower, upper, write_back, &client);
-    write(client, &InvalidValue, sizeof(Value));
+    set->get_range(set_id_begin, set_id_end, lower, upper, write_back, &client);
+    write(client, &NetworkOrderInvalidValue, sizeof(Value));
 }
+
