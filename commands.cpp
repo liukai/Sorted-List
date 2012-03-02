@@ -1,7 +1,7 @@
-#include "operations.h"
+#include "commands.h"
 #include <limits.h>
 
-OperationRuler::OperationRuler() {
+CommandRules::CommandRules() {
     argument_count[ADD - 1] = 3;
     argument_count[REM - 1] = 2;
     argument_count[SIZE - 1] = 1;
@@ -9,7 +9,7 @@ OperationRuler::OperationRuler() {
     argument_count[GETRANGE - 1] = ARBITARY;
 }
 
-int OperationRuler::get_argument_count(Opeation op) {
+int CommandRules::get_argument_count(Command op) {
     if (!is_valid_op(op))
         return -1;
     return argument_count[op - 1];

@@ -6,7 +6,7 @@
 #include <netinet/in.h>
 #include <iostream>
 #include "util.h"
-#include "operations.h"
+#include "commands.h"
 
 using namespace std;
 
@@ -40,8 +40,8 @@ int parse_command(const char* input, short* buffer) {
     }
     
     // validate the format
-    OperationRuler ruler;
-    Opeation op = (Opeation)buffer[0];
+    CommandRules ruler;
+    Command op = (Command)buffer[0];
     if (!ruler.is_valid_op(op)) {
         cerr<<"Invalid operation: "<<op<<endl;
         return -1;
@@ -50,7 +50,7 @@ int parse_command(const char* input, short* buffer) {
     int actual_argument_count = buffer_pos - buffer - 1;
     int expected_argument_count = ruler.get_argument_count(op);
 
-    if (expected_argument_count != OperationRuler::ARBITARY && 
+    if (expected_argument_count != CommandRules::ARBITARY && 
         actual_argument_count != expected_argument_count) {
         cerr<<"the expected argument number is <"<<expected_argument_count<<
               "> but actual argument number is <"<<actual_argument_count<<">"<<endl;

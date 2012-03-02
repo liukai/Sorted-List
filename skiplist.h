@@ -159,11 +159,11 @@ void SkipList<TKey, TValue>::range(const TKey& from, const TKey& to,
         }
     }
 
-    // left bound found
-    // TODO: it is possible that pos is NULL
     if (pos->next[0] == NULL) {
+        pos->unlock();
         return;
     }
+    // left bound found
     Node* left = pos->next[0];
     left->read_lock();
     pos->unlock();

@@ -46,9 +46,9 @@ public:
     void remove(Value set_id, Value key);
     Value get(Value set_id, Value key) ;
     Value size(Value set_id);
-    void get_range(int* setBegin, int* setEnd, 
+    void get_range(Value* setBegin, Value* setEnd, 
                    Value lower, Value upper, ScoreIndexer::Callback callback, void* args) {
-        for (int* setPos = setBegin; setPos != setEnd; ++setPos) {
+        for (Value* setPos = setBegin; setPos != setEnd; ++setPos) {
             IndexKey low(*setPos, lower, MinValue);
             IndexKey high(*setPos, upper, MaxValue);
             indexer.range(low, high, callback, args);

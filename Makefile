@@ -3,9 +3,9 @@ CXX=g++
 CPPFLAGS=-g -Wall
 LIBS=-lpthread
 
-SERVER_OBJECTS=server.o util.o sorted_set.o operations.o hash_map.o skiplist.o 
+SERVER_OBJECTS=server.o util.o sorted_set.o commands.o hash_map.o skiplist.o 
 UNIT_TEST_OBJECTS=sorted_set.o skiplist.o hash_map.o
-CLIENT_OBJECTS=util.o operations.o
+CLIENT_OBJECTS=util.o commands.o
 
 .PHONY: all clean
 

@@ -180,12 +180,10 @@ void test_skip_list() {
     assert(count == 3);
 }
 void test_hash_set() {
-    // http://primes.utm.edu/lists/small/100000.txt
     HashMap<int, int> hash_map(1299827, &naive_hash<int>);
     test_dict_functionality(hash_map);
 }
 
-// TODO: add description
 int main(int argc, char* argv[]) {
     test_skip_list();
     test_hash_set();
