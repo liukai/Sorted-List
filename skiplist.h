@@ -30,7 +30,7 @@ public:
     // @defaultKey: the header node is only a sentinel node, it 
     // should choose a "default key" that could differentiate 
     // itself from "normal" nodes.
-    // TODO: this design is not very good
+    // TODO: this design can be improved
     SkipList(const TKey& defaultKey = TKey(), 
              int max_level = DEFAULT_LEVEL): max_level(max_level) {
         header = new Node(DEFAULT_LEVEL, defaultKey, TValue()); level = 0;

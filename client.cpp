@@ -118,7 +118,6 @@ int main(int argc, char* argv[]) {
         cout<<buffer[i]<<"\t";
     }
     cout<<endl;
-    
 
     close(sock);
     return 0;

@@ -10,7 +10,7 @@
 
 template <class TKey, class TValue>
 class HashMap {
-    typedef typename std::pair<TKey, TValue> Slot;
+    typedef std::pair<TKey, TValue> Slot;
     typedef std::list<Slot> Bucket;
     typedef typename std::vector<Bucket> Table;
     typedef typename Bucket::iterator SlotPointer;
