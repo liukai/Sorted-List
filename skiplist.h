@@ -8,6 +8,8 @@
 #include <cassert>
 #include <set>
 
+using namespace std;
+
 const int DEFAULT_LEVEL = 16;
 
 template <class TKey, class TValue>

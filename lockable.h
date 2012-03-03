@@ -3,10 +3,6 @@
 
 #include <pthread.h>
 
-// TODO
-#include <iostream>
-using namespace std;
-
 class Lockable {
 public:
     Lockable() {
@@ -17,15 +13,12 @@ public:
     }
 
     void read_lock() const {
-        // cout<<"read lock: "<<&lock<<endl;
         pthread_rwlock_rdlock(&lock);
     }
     void write_lock() const {
-        // cout<<"write lock: "<<&lock<<endl;
         pthread_rwlock_wrlock(&lock);
     }
     void unlock() const {
-        // cout<<"unlock: "<<&lock<<endl;
         pthread_rwlock_unlock(&lock);
     }
 private:
