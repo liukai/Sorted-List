@@ -3,6 +3,8 @@
 using namespace std;
 
 SortedSet::~SortedSet() {
+    // by calling the sets' foreach, we can remove 
+    // all the allocated Set* pointer in sets.
     sets.foreach(remove_set);
 }
 

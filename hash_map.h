@@ -41,6 +41,8 @@ public:
     // it returns false.
     bool remove(const TKey& key);
 
+    // foreach() provide a way to travers all elements
+    // in the HashMap
     void foreach(ForeachAction action);
 private:
     int get_bucket_id(const TKey& key) {

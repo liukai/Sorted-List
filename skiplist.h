@@ -37,8 +37,14 @@ public:
              int max_level = DEFAULT_LEVEL): max_level(max_level) {
         header = new Node(DEFAULT_LEVEL, defaultKey, TValue()); level = 0;
     }
+    // In the deletion function we don't check the locks
     ~SkipList() {
-        delete header;
+        Node* node = header;
+        while(node != NULL) {
+            Node* next = node->next[0];
+            delete node;
+            node = next;
+        }
     }
 
     // QUERIES
