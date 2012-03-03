@@ -33,8 +33,13 @@ public:
     }
 
     // COMMANDS
-    void add(const TKey& key, const TValue& value);
-    void remove(const TKey& key);
+    // -- the add() will return true if the key/value doesn't 
+    // exist before; otherwise it returns false
+    bool add(const TKey& key, const TValue& value);
+    // -- the remove() will return true if the key exists
+    // and the corresponding item has been deleted; otherwise
+    // it returns false.
+    bool remove(const TKey& key);
 
     void foreach(ForeachAction action);
 private:
@@ -87,13 +92,14 @@ bool HashMap<TKey, TValue>::get(const TKey &key, TValue& val) {
 }
 
 template <class TKey, class TValue>
-void HashMap<TKey, TValue>::add(const TKey& key, const TValue& value) {
+bool HashMap<TKey, TValue>::add(const TKey& key, const TValue& value) {
     int bucket_id = get_bucket_id(key);
     Bucket& bucket = table[bucket_id];
     locks[bucket_id].write_lock();
 
     SlotPointer slot = find_slot(bucket, key);
-    if (slot == bucket.end()) { // Insert new item
+    bool added = slot == bucket.end();
+    if (added) { // Insert new item
         bucket.push_back(make_pair(key, value));
         counter.increase();
     } else { // Update existing item
@@ -101,21 +107,23 @@ void HashMap<TKey, TValue>::add(const TKey& key, const TValue& value) {
     }
 
     locks[bucket_id].unlock();
-
+    return added;
 }
 template <class TKey, class TValue>
-void HashMap<TKey, TValue>::remove(const TKey& key) {
+bool HashMap<TKey, TValue>::remove(const TKey& key) {
     int bucket_id = get_bucket_id(key);
     Bucket& bucket = table[bucket_id];
     locks[bucket_id].write_lock();
 
     SlotPointer slot = find_slot(bucket, key);
     // nothing will happen when the key doesn't exist
-    if (slot != bucket.end()) {
+    bool found = slot != bucket.end();
+    if (found) {
         bucket.erase(slot);
         counter.decrease();
     }
     locks[bucket_id].unlock();
+    return found;
 }
 
 template <class TKey, class TValue>

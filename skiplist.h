@@ -248,7 +248,9 @@ void SkipList<TKey, TValue>::remove(const TKey &key) {
     Node *pos = header;    
     NodeList prev_list(max_level + 1);
     set<Node*> locked_nodes;
+
     add_lock_if_unlocked(locked_nodes, pos);
+    prev_list[level] = pos;
 
     for (int i = level; i >= 0; i--) {
         add_lock_if_unlocked(locked_nodes, pos->next[i]);
@@ -261,7 +263,6 @@ void SkipList<TKey, TValue>::remove(const TKey &key) {
             assert(locked_nodes.find(pos) != locked_nodes.end());
             // Always keep locking two related nodes
             add_lock_if_unlocked(locked_nodes, pos->next[i]);
-            // pos = pos->next[i];
         }
         prev_list[i] = pos; 
     }
@@ -274,7 +275,10 @@ void SkipList<TKey, TValue>::remove(const TKey &key) {
             prev_list[i]->next[i] = pos->next[i];
         }
 
+        locked_nodes.erase(pos);
+        pos->unlock();
         delete pos;
+
         while (level > 0 && header->next[level] == NULL) {
             level--;
         }

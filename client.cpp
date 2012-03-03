@@ -110,14 +110,17 @@ int main(int argc, char* argv[]) {
     }
     int bytesRead = recv(sock, buffer, BUFFER_SIZE - 1, 0);
     int receiveSize = bytesRead / sizeof(int);
-    cout<<"# Bytes read: "<<bytesRead<<endl;
     to_host_order(buffer, buffer + receiveSize);
     
-    cout<<"# Received data: "<<endl;
-    for (int i = 0; i < receiveSize; ++i) {
-        cout<<buffer[i]<<"\t";
+    if (receiveSize != 0) {
+        const char* opNames[] = {"None", "ADD", "REM", "SIZE", "GET", "RANGE"};
+        cout<<"Received data: "<<opNames[buffer[0]];
+        for (int i = 1; i < receiveSize; ++i) {
+            cout<<"  "<<buffer[i];
+        }
+        cout<<endl;
+        cout<<endl;
     }
-    cout<<endl;
 
     close(sock);
     return 0;

@@ -189,7 +189,6 @@ void SortedSetServer::add(int client, Value* buffer, int arg_count, SortedSet* s
         return;
     }
     set->add(buffer[0], buffer[1], buffer[2]);
-    assert(set->get(buffer[0], buffer[1]) == buffer[2]);
 }
 
 void SortedSetServer::remove(int client, Value* buffer, int arg_count, SortedSet* set) {
@@ -226,7 +225,6 @@ void SortedSetServer::get_range(int client, Value* buffer,
     Value* set_id_begin = buffer + ARGUMENT_OFFSET;
     Value* pos = buffer + ARGUMENT_OFFSET;
     Value* buffer_end = buffer + ARGUMENT_OFFSET + arg_count;
-    cout<<"count: "<<arg_count<<endl;
 
     while (pos != buffer_end && *pos != InvalidValue) {
         ++pos;
@@ -269,7 +267,6 @@ void SortedSetServer::get_range(int client, Value* buffer,
     // NOTE: here I pass the address to the 'pos' pointer. (pointer to a pointer).
     //       Doing this allows the callback function to have enough information 
     //       update the latest available position for append.
-    *pos++ = INT_MAX;
     set->get_range(set_id_begin, set_id_end, lower, upper, 
                    append_to_buffer, &pos);
 

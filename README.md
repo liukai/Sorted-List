@@ -36,7 +36,7 @@ In this program, skip list is used for indexing the `score`, the key of the skip
 
 SortedList
 ----------------
-SortedList is a facade that combines both advantage of hash table and 
+SortedList is a facade that combines both advantage of hash table and skip list. But the sorted list doesn't implement any mechanism to ensure the concurrency between hash table(storing sets) and skip list(indexing the scores). So it is possible that the set has update itself but the skip list is still keeping the out-of-date information(for a short time).
 
 How to run the program
 =========================

@@ -1,7 +1,6 @@
 #include "sorted_set.h"
 
-// TODO: USED FOR TEST ONLY
-#include <iostream>
+using namespace std;
 
 SortedSet::~SortedSet() {
     sets.foreach(remove_set);
@@ -11,14 +10,25 @@ void SortedSet::add(Value set_id, Value key, Value score) {
     // Check if the set exists
     Set* set = NULL;
     if (!sets.get(set_id, set)) {
-        set = new Set(max_set_size, naive_hash);
+        set = new Set(max_set_size_element_size, naive_hash);
         sets.add(set_id, set);
     }
-    
-    set->add(key, score);    
 
     IndexKey indexKey(set_id, score, key);
-    indexer.add(indexKey, key);
+    Value oldScore = InvalidValue;
+
+    if (set->get(key, oldScore)) {
+         // the key already exists
+        // remove the old entry
+        IndexKey oldKey(set_id, oldScore, key);
+        indexer.remove(oldKey);
+        // add the new entry
+        indexer.add(indexKey, key);
+    } else {
+        // the key doesn't exist before
+        indexer.add(indexKey, key);
+    }
+    set->add(key, score);
 }
 void SortedSet::remove(Value set_id, Value key) {
     Set* set = NULL;

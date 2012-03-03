@@ -10,57 +10,69 @@
 
 using namespace std;
 
-void test_sorted_set() {
-    SortedSet sorted_set(5209, 5209);
-
-    // test the add operation
-    assert(sorted_set.size(1) == 0);
-
-    sorted_set.add(1, 2, 3);
-    assert(sorted_set.size(1) == 1);
-    assert(sorted_set.get(1, 2) == 3);
-
-    sorted_set.add(1, 1, 4);
-    assert(sorted_set.size(1) == 2);
-    assert(sorted_set.get(1, 1) == 4);
-
-    sorted_set.add(1, 3, 2);
-    assert(sorted_set.size(1) == 3);
-    assert(sorted_set.get(1, 3) == 2);
-
-    sorted_set.add(1, 2, 5);
-    assert(sorted_set.size(1) == 3);
-    assert(sorted_set.get(1, 2) == 5);
-
-    // test invalid "get" and "size" operation
-    // -- set exists, key doesn't exist
-    assert(sorted_set.size(0) == 0);
-    assert(sorted_set.get(1, 0) == SortedSet::INVALID);
-    // -- set doesn't exists
-    assert(sorted_set.get(0, 0) == SortedSet::INVALID);
-
-    // remove test
-    // -- erase existing item
-    sorted_set.remove(1, 2);
-    assert(sorted_set.size(1) == 2);
-    assert(sorted_set.get(1, 2) == SortedSet::INVALID);
-    // -- erase set that doesn't exist
-    sorted_set.remove(0, 2);
-    // -- erase key that doesn't exist
-    sorted_set.remove(1, 2);
-    assert(sorted_set.size(1) == 2);
-    assert(sorted_set.get(1, 2) == SortedSet::INVALID);
-}
-
+// -- UTILITIES
 void add_one(const int& key, const int& value, void* arg) {
     int* pCount = (int*) arg;
     (*pCount) += 1;
 }
-void add_one_1(const SortedSet::IndexKey& key, const int& value, void* arg) {
+void add_one_for_index_key(const SortedSet::IndexKey& key, const int& value, void* arg) {
     int* pCount = (int*) arg;
     (*pCount) += 1;
 }
 
+void test_sorted_set() {
+    SortedSet set(5209, 5209);
+
+    // test the add operation
+    assert(set.size(1) == 0);
+
+    set.add(1, 2, 3);
+    assert(set.size(1) == 1);
+    assert(set.get(1, 2) == 3);
+
+    set.add(1, 1, 4);
+    assert(set.size(1) == 2);
+    assert(set.get(1, 1) == 4);
+
+    set.add(1, 3, 2);
+    assert(set.size(1) == 3);
+    assert(set.get(1, 3) == 2);
+
+    set.add(1, 2, 5);
+    assert(set.size(1) == 3);
+    assert(set.get(1, 2) == 5);
+
+    // test invalid "get" and "size" operation
+    // -- set exists, key doesn't exist
+    assert(set.size(0) == 0);
+    assert(set.get(1, 0) == SortedSet::INVALID);
+    // -- set doesn't exists
+    assert(set.get(0, 0) == SortedSet::INVALID);
+
+    // remove test
+    // -- erase existing item
+    set.remove(1, 2);
+    assert(set.size(1) == 2);
+    assert(set.get(1, 2) == SortedSet::INVALID);
+    // -- erase set that doesn't exist
+    set.remove(0, 2);
+    // -- erase key that doesn't exist
+    set.remove(1, 2);
+    assert(set.size(1) == 2);
+    assert(set.get(1, 2) == SortedSet::INVALID);
+
+    // range test
+    int count = 0;
+    int set_id = 1;
+
+    // update the value and see if the indexer changes
+    for (int i = 100; i <= 105; ++i) {
+        count = 0;
+        set.add(1, 20, i);
+        set.get_range(&set_id, &set_id + 1, 100, 105, add_one_for_index_key, &count);
+        assert(1 == count);
+    }
+}
 void test_sorted_set_range() {
     SortedSet set(5209, 5209);
     int set_ids[] = {1, 2, 3, 4};
@@ -69,7 +81,7 @@ void test_sorted_set_range() {
     for (int i = 0; i < 100; ++i) {
         set.add(1, i, i);
     }
-    set.get_range(set_ids, set_ids +1, 10, 20, add_one_1, &count);
+    set.get_range(set_ids, set_ids +1, 10, 20, add_one_for_index_key, &count);
     assert(count == 11);
 
     count = 0;
@@ -77,15 +89,15 @@ void test_sorted_set_range() {
         int score = i * 2 + 1;
         set.add(2, i, score);
     }
-    set.get_range(set_ids + 1, set_ids + 2, 10, 20, add_one_1, &count);
+    set.get_range(set_ids + 1, set_ids + 2, 10, 20, add_one_for_index_key, &count);
     assert(count == 5);
 
     count = 0;
-    set.get_range(set_ids + 2, set_ids + 3, 10, 20, add_one_1, &count);
+    set.get_range(set_ids + 2, set_ids + 3, 10, 20, add_one_for_index_key, &count);
     assert(count == 0);
 
     count = 0;
-    set.get_range(set_ids, set_ids + 3, 10, 20, add_one_1, &count);
+    set.get_range(set_ids, set_ids + 3, 10, 20, add_one_for_index_key, &count);
     assert(count == 5 + 11);
 }
 
