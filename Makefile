@@ -28,7 +28,7 @@ rebuild:
 	make
 pack:
 	rm -rf sorted_list.tar.gz
-	tar cvfz sorted_list.tar.gz *.h *.cpp Makefile README.md, DESC.txt run.sh
+	tar cvfz sorted_list.tar.gz *.h *.cpp Makefile README.md DESC.txt demo.sh
 
 run_tests:
 	@echo "[Start Unit Tests] No news is good newes"

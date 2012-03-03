@@ -46,6 +46,8 @@ run server: `./server`, the port number of the server is 7999.
 
 run client: `./client <host> <port> <commands>`. For example you can call `./client 127.0.0.1 7999 "1 20 10 123`, the first number of the third argument indicate the operation(ADD = 1, REM = 2, SIZE = 3, GET = 4, GETRANGE = 5.).
 
+run demo: `./demo.sh`. demo.sh is an example interaction.
+
 Misc
 =========================
 there is also a executable file file called `unit_test`, but I'm sorry this code is not well written. To avoid use external unit test libraries I simply use the basic `assert` as the testing facility. In the make file every time when the `server` is re-compiled the `unit_test` will be executed(unit_test will output nothing if there is no error).
