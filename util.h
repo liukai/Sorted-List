@@ -17,6 +17,21 @@ bool can_continue(int result, const char* operation);
 size_t robust_read(int fd, void* buffer, size_t bufferSize);
 size_t robust_write(int fd, void* buffer, size_t bufferSize);
 
+template <class TData>
+void to_host_order(TData* begin, TData* end) {
+    while (begin != end) {
+        *begin= ntohl(*begin);
+        ++begin;
+    }
+}
+template <class TData>
+void to_network_order(TData* begin, TData* end) {
+    while (begin != end) {
+        *begin= htonl(*begin);
+        ++begin;
+    }
+}
+
 template <class T>
 inline int naive_hash(const T& item) { return (int)item; }
 

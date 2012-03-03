@@ -1,18 +1,9 @@
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <pthread.h>
-#include <netinet/in.h>
-#include <algorithm>
 #include <netdb.h>
 #include <iostream>
-#include <vector>
+#include <arpa/inet.h>
 #include "util.h"
 #include "server.h"
+
 using namespace std;
 
 // -- Constants
@@ -23,6 +14,7 @@ bool are_valid_values(Value* begin, Value* end) {
     while (begin != end) {
         if (*begin < 0)
             return false;
+        ++begin;
     }
     return true;
 }
@@ -34,21 +26,9 @@ void append_to_buffer(const SortedSet::IndexKey& indexKey, const Value& _, void*
     **pos_ptr = indexKey.score;
     *pos_ptr += 1;
 }
-void to_host_order(Value* begin, Value* end) {
-    while (begin != end) {
-        *begin= ntohl(*begin);
-        ++begin;
-    }
-}
-void to_network_order(Value* begin, Value* end) {
-    while (begin != end) {
-        *begin= htonl(*begin);
-        ++begin;
-    }
-}
 void write_to_network(int fd, Value* buffer, int size) {
     to_network_order(buffer, buffer + size);
-    robust_write(fd, buffer, size);
+    write(fd, buffer, size * sizeof(Value));
 }
 
 // -- SortedSetServer 
@@ -133,18 +113,23 @@ void SortedSetServer::start_server() {
         int client_socket = accept(server_socket, (sockaddr *) &client_address, &sin_size);
         ThreadArgs arg = ThreadArgs(client_socket, &sorted_set);
         if(can_continue(client_socket, "accept()")) {
-            pthread_create(&receive_thread, NULL, handle_request, new int(client_socket));
+            if (pthread_create(&receive_thread, NULL, handle_request, 
+                    new ThreadArgs(client_socket, &sorted_set)) < 0) {
+                cerr<<"[ERROR] create thread fails"<<endl;
+                close(client_socket);
+            }
         }
     }
 }
 
 // -- HANDLE Client Requests
 void* SortedSetServer::handle_request(void* args) {
+    cout<<"[INFO] new request arrives"<<endl;
     ThreadArgs* arguments = (ThreadArgs*) args;
 
     static const int BUFFER_SIZE = 1024;
     Value buffer[BUFFER_SIZE] = { '\0' };
-    int bufferRead = robust_read(arguments->first, buffer, BUFFER_SIZE);
+    int bufferRead = read(arguments->first, buffer, BUFFER_SIZE);
     if (bufferRead <= 0) {
         close_client_socket(arguments,
                             "[Error] error occurs while reading data from client");
@@ -179,14 +164,15 @@ void* SortedSetServer::handle_request(void* args) {
     // Dispatch the command
     commands[op - 1](arguments->first, buffer, argument_count, arguments->second);
     close_client_socket(arguments);
+    cout<<"[INFO] Request Processed!"<<endl;
     return NULL;
 }
 
 void SortedSetServer::close_client_socket(ThreadArgs* args, const char* error_message) {
     int fd = args->first;
-    if (error_message == NULL) {
-        write(fd, &NetworkOrderInvalidValue, sizeof(Value));
+    if (error_message != NULL) {
         cerr<<"[Error] "<<error_message<<endl;
+        write(fd, &NetworkOrderInvalidValue, sizeof(Value));
     }
 
     close(fd);
@@ -196,15 +182,17 @@ void SortedSetServer::close_client_socket(ThreadArgs* args, const char* error_me
 // -- Command handlers
 // Please note all the command handlers will assume the external functions pass
 // enough arguments so they will *NOT* check the numbers of arguments.
-void SortedSetServer::add(int client, Value* buffer, int buffer_size, SortedSet* set) {
+void SortedSetServer::add(int client, Value* buffer, int arg_count, SortedSet* set) {
     buffer += ARGUMENT_OFFSET; // skip the operator
     if (!are_valid_values(buffer, buffer + 3)) {
         write(client, &NetworkOrderInvalidValue, sizeof(Value));
         return;
     }
     set->add(buffer[0], buffer[1], buffer[2]);
+    assert(set->get(buffer[0], buffer[1]) == buffer[2]);
 }
-void SortedSetServer::remove(int client, Value* buffer, int buffer_size, SortedSet* set) {
+
+void SortedSetServer::remove(int client, Value* buffer, int arg_count, SortedSet* set) {
     buffer += ARGUMENT_OFFSET; // skip the operator
     if (!are_valid_values(buffer, buffer + 2)) {
         write(client, &NetworkOrderInvalidValue, sizeof(Value));
@@ -212,71 +200,80 @@ void SortedSetServer::remove(int client, Value* buffer, int buffer_size, SortedS
     }
     set->remove(buffer[0], buffer[1]);
 }
-void SortedSetServer::size(int client, Value* buffer, int buffer_size, SortedSet* set) {
+void SortedSetServer::size(int client, Value* buffer, int arg_count, SortedSet* set) {
     Value* pos = buffer + ARGUMENT_OFFSET; // let pos point to the first argument  
     if (!are_valid_values(pos, pos + 1)) {
         write(client, &NetworkOrderInvalidValue, sizeof(Value));
         return;
     }
     // Add the result right after the last argument
-    *(++pos) = set->size(pos[0]);
 
-    write_to_network(client, buffer, pos + 1 - buffer);
+    *(pos + 1) = set->size(pos[0]);
+
+    write_to_network(client, buffer, pos + 2 - buffer);
 }
 
-void SortedSetServer::get(int client, Value* buffer, int buffer_size, SortedSet* set) {
+void SortedSetServer::get(int client, Value* buffer, int arg_count, SortedSet* set) {
     Value* pos = buffer + ARGUMENT_OFFSET; // let pos point to the first argument  
-    // If the value doesn't exist, set->get() will return InvalidValue(-1)
-    *(pos) = set->get(pos[0], pos[1]);
-    ++pos;
-
-    write_to_network(client, buffer, pos + 1 - buffer);
+    
+    Value* response_pos = pos + 2;
+    *response_pos = set->get(pos[0], pos[1]); // If the value doesn't exist, set->get() 
+                                           // will return InvalidValue(-1)
+    write_to_network(client, buffer, response_pos + 1 - buffer);
 }
 void SortedSetServer::get_range(int client, Value* buffer, 
-                                int buffer_size, SortedSet* set) {
+                                int arg_count, SortedSet* set) {
     Value* set_id_begin = buffer + ARGUMENT_OFFSET;
     Value* pos = buffer + ARGUMENT_OFFSET;
-    Value* buffer_end = buffer + buffer_size;
+    Value* buffer_end = buffer + ARGUMENT_OFFSET + arg_count;
+    cout<<"count: "<<arg_count<<endl;
 
     while (pos != buffer_end && *pos != InvalidValue) {
-        ++buffer;
+        ++pos;
     }
     Value* set_id_end = pos;
 
     // Missing the "-1" as the separator?
     if (*pos != InvalidValue) {
+        cerr<<"[Error] Missing -1 as the separator"<<endl;
         write(client, &NetworkOrderInvalidValue, sizeof(Value));
         return;
     }
     // check the validity of the set ids
     if (!are_valid_values(set_id_begin, set_id_end)) {
+        cerr<<"[Error] There are inalid set id"<<endl;
         write(client, &NetworkOrderInvalidValue, sizeof(Value));
         return;
     }
 
     ++pos; // skip the "-1" separator
     // check if there are enough room for "lower" and "upper"
-    if (buffer_end - buffer < 2) {
+    if (buffer_end - pos < 2) {
+        cerr<<"[Error] invlaid upper and lower bound"<<endl;
         write(client, &NetworkOrderInvalidValue, sizeof(Value));
         return;
     }
     // check the validity of the "lower" and "upper"
     if (!are_valid_values(pos, pos + 2)) {
+        cerr<<"[Error] invlaid upper and lower bound"<<endl;
         write(client, &NetworkOrderInvalidValue, sizeof(Value));
         return;
     }
+
     Value lower = pos[0];
     Value upper = pos[1];
     // Skip the `lower` and `upper`; so after this pos will point to 
     // the position ready to append command results.
-    pos += 2; 
+    pos += 2;
 
     // NOTE: here I pass the address to the 'pos' pointer. (pointer to a pointer).
     //       Doing this allows the callback function to have enough information 
     //       update the latest available position for append.
-    set->get_range(set_id_begin, set_id_end, lower, upper, append_to_buffer, &pos);
-    *pos++ = InvalidValue; // add a separator to indicate the end of results
+    *pos++ = INT_MAX;
+    set->get_range(set_id_begin, set_id_end, lower, upper, 
+                   append_to_buffer, &pos);
 
+    *pos++ = InvalidValue; // add a separator to indicate the end of results
     write_to_network(client, buffer, pos - buffer);
 }
 

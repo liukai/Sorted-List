@@ -48,6 +48,7 @@ private:
     int max_connection; // how many concurrent connection are supported
     int server_socket;
     SortedSet sorted_set;
+    friend void* ::handle_request(void* args);
 };
 
 #endif

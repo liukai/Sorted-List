@@ -10,31 +10,33 @@
 
 using namespace std;
 
-int parse_command(const char* input, short* buffer) {
+int parse_command(const char* input, int* buffer) {
     // check if the input is valid: all digits or spaces
     // TODO: the performance is not so good
     const char* pos = input;
     while (*pos != '\0') {
         if ((*pos >= '0' && *pos <= '9') || // digits
-            *pos == ' ' || *pos == '\t') { // spaces
+            *pos == ' ' || *pos == '\t' || *pos == '-') { // spaces
             ++pos;
         } else {
-            cerr<<"the input has invalid characters"<<endl;
+            cerr<<"# the input has invalid characters"<<endl;
             return -1;
         }
     }
     
     // get numbers
     pos = input;
-    short* buffer_pos = buffer;
+    int* buffer_pos = buffer;
     while (*pos != '\0') {
-        while (*pos == ' ' || *pos == '\t')
+        while (*pos == ' ' || *pos == '\t') {
             ++pos;
+        }
         if (*pos == '\0')
             break;
 
-        *buffer_pos++ =  (short)atoi(pos);
-        while (*pos >= '0' && *pos <= '9') {
+        *buffer_pos++=  (int)atoi(pos);
+
+        while ((*pos >= '0' && *pos <= '9') || *pos == '-') {
             ++pos;
         }
     }
@@ -92,7 +94,7 @@ int main(int argc, char* argv[]) {
 
     // Send the command to the server
     const int BUFFER_SIZE = 1024;
-    short buffer[1024];
+    int buffer[1024];
     int size = parse_command(input, buffer);
 
     if (size == -1) {
@@ -100,23 +102,23 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    unsigned int data_size = sizeof(short) * size;
+    to_network_order(buffer, buffer + size);
+    int data_size = sizeof(int) * size;
     if (send(sock, buffer, data_size, 0) != data_size) {
         cerr<<"Send data fails!"<<endl;
         return 1;
     }
-
-    /*
-    while (received < echolen) {
-        int bytes = 0;
-        if ((bytes = recv(sock, buffer, BUFFSIZE-1, 0)) < 1) {
-            Die("Failed to receive bytes from server");
-        }
-        received += bytes;
-        buffer[bytes] = '\0';        
-        fprintf(stdout, buffer);
+    int bytesRead = recv(sock, buffer, BUFFER_SIZE - 1, 0);
+    int receiveSize = bytesRead / sizeof(int);
+    cout<<"# Bytes read: "<<bytesRead<<endl;
+    to_host_order(buffer, buffer + receiveSize);
+    
+    cout<<"# Received data: "<<endl;
+    for (int i = 0; i < receiveSize; ++i) {
+        cout<<buffer[i]<<"\t";
     }
-    */
+    cout<<endl;
+    
 
     close(sock);
     return 0;
