@@ -1,10 +1,5 @@
 #include "sorted_set.h"
 
-// TODO: the test
-#include <iostream>
-
-using namespace std;
-
 SortedSet::~SortedSet() {
     // by calling the sets' foreach(), we can delete
     // all the allocated Set* pointer in sets.
@@ -16,23 +11,14 @@ void SortedSet::add(Value set_id, Value key, Value score) {
     // Check if the set exists
     Set* set = NULL;
     sets.safe_get(set_id, set, create_set, this);
-
-    // TODO
-    IndexKey indexKey(set_id, score, key);
     Value old_score = InvalidValue;
-
-    Key k = make_index_key(key, score);
-    cout<<(int)k<<"\t"<<(k>>ValueBitSize)<<endl;
 
     // Update the index
     if (set->get(key, old_score)) {
         // Update index only if (1) the key already exists and
         // (2) the updated value is not the same as the old one
         if (old_score != score) {
-            // IndexKey oldKey(set_id, old_score, key);
-            // indexer.remove(oldKey);
-
-            Key old_key = make_index_key(key, old_score);
+            IndexKey old_key = make_index_key(key, old_score);
 
             Indexer* indexer = NULL;
             indexerList.get(set_id, indexer);
@@ -61,8 +47,6 @@ void SortedSet::remove(Value set_id, Value key) {
     Value score = InvalidValue;
     if(set->get(key, score)) {
         set->remove(key);
-        // IndexKey indexKey(set_id, score, key);
-        // indexer.remove(indexKey);
         Indexer* indexer = NULL;
         indexerList.get(set_id, indexer);
         // TODO: COULD THERE BE SOME inconsistency and potential 
@@ -70,8 +54,6 @@ void SortedSet::remove(Value set_id, Value key) {
         assert(indexer); 
         
         indexer->remove(make_index_key(key, score));
-        // indexer->remove(old_key);
-        // indexer->add(make_index_key(key, score), key);
     }
 }
 Value SortedSet::get(Value set_id, Value key) {
@@ -91,8 +73,8 @@ void SortedSet::get_range(Value* setBegin, Value* setEnd,
                           SortedSet::Indexer::Callback callback,
                           void* args) {
     assert(lower <= upper);
-    Key low = make_index_key(0, lower);
-    Key high = make_index_key(MaxValue, upper);
+    IndexKey low = make_index_key(0, lower);
+    IndexKey high = make_index_key(MaxValue, upper);
 
     for (Value* setPos = setBegin; setPos != setEnd; ++setPos) {
         Indexer* indexer = NULL;

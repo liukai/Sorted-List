@@ -8,10 +8,6 @@
 #include <cassert>
 #include <set>
 
-// TODO
-#include <iostream>
-using namespace std;
-
 const int DEFAULT_LEVEL = 32;
 
 template <class TKey, class TValue>
@@ -29,13 +25,15 @@ template <class TKey, class TValue>
 class SkipList {
     typedef SkipNode<TKey, TValue> Node;
     typedef std::vector<Node*> NodeList;
+    typedef std::set<Node*> LockedNodes;
 public:
     typedef void (*Callback)(const TKey&, const TValue&, void*);
     // @defaultKey: the header node is only a sentinel node, it 
     // should choose a "default key" that could differentiate 
     // itself from "normal" nodes.
     SkipList(const TKey& defaultKey = TKey(), 
-             int max_level = DEFAULT_LEVEL): max_level(max_level) {
+             int max_level = DEFAULT_LEVEL): 
+            MAX_LEVEL(max_level), PREV_LIST_SIZE(MAX_LEVEL + 2) {
         header = new Node(DEFAULT_LEVEL, defaultKey, TValue()); level = 0;
     }
     // In the deletion function we don't check the locks
@@ -68,47 +66,33 @@ private:
     // get_random_level() will generate the level at a "certain" probability
     // It will ensure the generated levels that could yield efficient structure.
     int get_random_level();
-    // find_for_write() finds the node with specific key and
-    // ensures the thread-safety.
-    Node* find_for_write(const TKey&, Node* prev,
+    // find_node_for_write() finds the node with specific key and
+    // locks the key properly(with hand-in-hand lock).
+    // @params prev: the initial "previous" node, whose key is guarantee to 
+    //               be less than key.
+    // @params prev_list: output parameter. After calling this method,
+    //                    the prev_list will be filled all the previous
+    //                    nodes of the serched node(if such node doesn't
+    //                    exist, it will be the first node whose value is
+    //                    greater than `key`)
+    // @returns: return the node with the corresponding key; if such node
+    //           doesn't exist, returns the first node whose value is
+    //           greater than `key`.
+    Node* find_node_for_write(const TKey&, Node* prev,
                          SkipList<TKey, TValue>::NodeList& prev_list,
-                         std::set<Node*>& locked_nodes);
+                         LockedNodes& locked_nodes);
     
-    // TODO: should be moved out
-    bool can_lock(NodeList& prev_list, Node* pos, int i) {
-        if ((prev_list[i + 1] != NULL))
-            assert(prev_list[i + 1]->next.size() > i + 1);
-        return (pos != NULL && 
-            ((prev_list[i + 1] == NULL || 
-             (prev_list[i + 1]->next.size() > i + 1 && prev_list[i + 1]->next[i + 1] != pos))));
-    }
+    // -- Lock helpers
+    bool can_lock(NodeList& prev_list, Node* pos, int i);
+    static void add_to_locked_nodes(LockedNodes& nodes, Node* node);
+    static void release_locks(LockedNodes& nodes);
+    static void remove_from_locked_nodes(LockedNodes& nodes, Node* node);
 
-    // TODO rename and move out
-    static void lock_it(std::set<Node*>& nodes, Node* node) {
-        assert(node != NULL);
-        assert(nodes.find(node) == nodes.end());
-
-        // node->write_lock();
-        nodes.insert(node);
-    }
-
-    static void release_locks(std::set<Node*>& nodes) {
-        for (typename std::set<Node*>::iterator pos = nodes.begin();
-             pos != nodes.end(); ++pos) {
-            (*pos)->unlock();
-        }
-    }
-    // TODO rename and move out
-    static void unlock_it(std::set<Node*>& nodes, Node* node) {
-        assert(node != NULL);
-        assert(nodes.find(node) != nodes.end());
-
-        nodes.erase(node);
-    }
-
+    // -- Fields
     Node *header;
     SafeCounter counter;
-    int max_level;
+    const int MAX_LEVEL;
+    const int PREV_LIST_SIZE;
     int level;
 };
 
@@ -186,10 +170,10 @@ void SkipList<TKey, TValue>::range(const TKey& from, const TKey& to,
 
 // -- Commands
 template <class TKey, class TValue>
-SkipNode<TKey, TValue>* SkipList<TKey, TValue>::find_for_write(
+SkipNode<TKey, TValue>* SkipList<TKey, TValue>::find_node_for_write(
         const TKey& key, SkipNode<TKey, TValue>* prev,
         SkipList<TKey, TValue>::NodeList& prev_list,
-        std::set<Node*>& locked_nodes) {
+        LockedNodes& locked_nodes) {
     Node* pos = NULL;
 
     for (int i = level; i >= 0; i--) {
@@ -199,7 +183,7 @@ SkipNode<TKey, TValue>* SkipList<TKey, TValue>::find_for_write(
 
         if (can_lock(prev_list, pos, i)) {
             pos->write_lock();
-            lock_it(locked_nodes, pos);
+            add_to_locked_nodes(locked_nodes, pos);
         }
 
         int unlocked_exemption = 0;
@@ -208,7 +192,7 @@ SkipNode<TKey, TValue>* SkipList<TKey, TValue>::find_for_write(
 
             if (prev != prev_list[i + 1]) {
                 prev->unlock();
-                unlock_it(locked_nodes, prev);
+                remove_from_locked_nodes(locked_nodes, prev);
             } else {
                 unlocked_exemption++;
                 assert(unlocked_exemption <= 1);
@@ -222,7 +206,7 @@ SkipNode<TKey, TValue>* SkipList<TKey, TValue>::find_for_write(
 
             if (can_lock(prev_list, pos, i)) {
                 pos->write_lock();
-                lock_it(locked_nodes, pos);
+                add_to_locked_nodes(locked_nodes, pos);
             }
             // Always keep locking two related nodes
         }
@@ -236,15 +220,20 @@ SkipNode<TKey, TValue>* SkipList<TKey, TValue>::find_for_write(
 
 template <class TKey, class TValue>
 void SkipList<TKey, TValue>::add(const TKey& key, const TValue& value) {
-    // -- Step 1: locate
     Node* prev = header;
-    NodeList prev_list(max_level + 2, NULL); // TODO: check this out
-    std::set<Node*> locked_nodes;
+    NodeList prev_list(PREV_LIST_SIZE, NULL);
+    LockedNodes locked_nodes;
 
     // generate new level
+    // WARNING: Please note if the new node has a level that is greater
+    // the current one, we have to make sure to lock the header node 
+    // now(and won't release it during the hand-in-hand locking).
+    // Deadlock may occur if lock the header after calling 
+    // find_node_for_write() -- IT IS IMPORTNAT to lock the node in 
+    // ascending/descending order uniformly. 
     header->write_lock();
     int new_level = get_random_level();
-    lock_it(locked_nodes, header);
+    add_to_locked_nodes(locked_nodes, header);
 
     if (new_level > level) {
         for (int i = level + 1; i <= new_level; i++) {
@@ -254,7 +243,7 @@ void SkipList<TKey, TValue>::add(const TKey& key, const TValue& value) {
         level = new_level;
     }
 
-    Node* pos = find_for_write(key, prev, prev_list, locked_nodes);
+    Node* pos = find_node_for_write(key, prev, prev_list, locked_nodes);
 
     // if the key already exists, then only update the value
     if (pos != NULL && pos->key == key) {
@@ -278,12 +267,12 @@ template <class TKey, class TValue>
 void SkipList<TKey, TValue>::remove(const TKey &key) {
     // -- Step 1: locate
     Node* prev = header;
-    NodeList prev_list(max_level + 2, NULL); // TODO: check this out
-    std::set<Node*> locked_nodes;
+    NodeList prev_list(PREV_LIST_SIZE, NULL);
+    LockedNodes locked_nodes;
     
     header->write_lock();
-    lock_it(locked_nodes, header);
-    Node* pos = find_for_write(key, prev, prev_list, locked_nodes);
+    add_to_locked_nodes(locked_nodes, header);
+    Node* pos = find_node_for_write(key, prev, prev_list, locked_nodes);
 
     if (pos != NULL && pos->key == key) {
         for (int i = 0; i <= level; i++) {
@@ -293,7 +282,7 @@ void SkipList<TKey, TValue>::remove(const TKey &key) {
         }
 
         pos->unlock();
-        unlock_it(locked_nodes, pos);
+        remove_from_locked_nodes(locked_nodes, pos);
         delete pos;
 
         while (level > 0 && header->next[level] == NULL) {
@@ -318,7 +307,50 @@ int SkipList<TKey, TValue>::get_random_level() {
     // generate the level with a certain probability
     float rand_num = (float) rand() / RAND_MAX;
     int level = (int)(log(rand_num) / log(1 - P));
-    return level < max_level ? level : max_level;
+    return level < MAX_LEVEL ? level : MAX_LEVEL;
+}
+
+// -- Lock Helpers
+template <class TKey, class TValue>
+bool SkipList<TKey, TValue>::can_lock(SkipList<TKey, 
+                                      TValue>::NodeList& prev_list, 
+                                      SkipList<TKey, TValue>::Node* pos, 
+                                      int i) {
+    assert(prev_list[i + 1] == NULL || 
+           (int)prev_list[i + 1]->next.size() > i + 1);
+    return (pos != NULL && 
+        ((prev_list[i + 1] == NULL || 
+         ((int)prev_list[i + 1]->next.size() > i + 1 && prev_list[i + 1]->next[i + 1] != pos))));
+}
+
+template <class TKey, class TValue>
+void SkipList<TKey, TValue>::add_to_locked_nodes(
+        SkipList<TKey, TValue>::LockedNodes& nodes, 
+        SkipList<TKey, TValue>::Node* node) {
+    assert(node != NULL);
+    assert(nodes.find(node) == nodes.end());
+
+    nodes.insert(node);
+}
+
+template <class TKey, class TValue>
+void SkipList<TKey, TValue>::release_locks(
+        SkipList<TKey, TValue>::LockedNodes& nodes) {
+    for (typename LockedNodes::iterator pos = nodes.begin();
+         pos != nodes.end(); ++pos) {
+        (*pos)->unlock();
+    }
+}
+
+template <class TKey, class TValue>
+void SkipList<TKey, TValue>::remove_from_locked_nodes(
+        SkipList<TKey, 
+        TValue>::LockedNodes& nodes, 
+        SkipList<TKey, TValue>::Node* node) {
+    assert(node != NULL);
+    assert(nodes.find(node) != nodes.end());
+
+    nodes.erase(node);
 }
 
 #endif

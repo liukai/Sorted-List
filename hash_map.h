@@ -8,10 +8,6 @@
 #include <algorithm>
 #include "lockable.h"
 
-// TODO: JUST FOR TEST
-#include <iostream>
-using namespace std;
-
 template <class TKey, class TValue>
 class HashMap {
     typedef std::pair<TKey, TValue> Slot;
@@ -109,7 +105,7 @@ void HashMap<TKey, TValue>::safe_get(const TKey& key, TValue& value,
 
     if (slot == bucket.end()) { // Insert new item
         value = defaultValueValueGenerator(arg);
-        bucket.push_back(make_pair(key, value));
+        bucket.push_back(std::make_pair(key, value));
         counter.increase();
     } else { // Update existing item
         value = slot->second;
@@ -128,7 +124,7 @@ bool HashMap<TKey, TValue>::add(const TKey& key, const TValue& value) {
     SlotPointer slot = find_slot(bucket, key);
     bool added = slot == bucket.end();
     if (added) { // Insert new item
-        bucket.push_back(make_pair(key, value));
+        bucket.push_back(std::make_pair(key, value));
         counter.increase();
     } else { // Update existing item
         slot->second = value;   

@@ -8,39 +8,12 @@
 
 class SortedSet {
 public:
-    // TODO to delete
-    struct IndexKey {
-        Value set_id;
-        Value score;
-        Value key;
-
-        IndexKey(Value set_id = -1, Value score = -1, Value key = -1):
-                set_id(set_id), score(score), key(key) {
-        }
-        bool operator== (const IndexKey other) const {
-            return set_id == other.set_id &&
-                   score == other.score &&
-                   key == other.key;
-        }
-        bool operator< (const IndexKey other) const {
-            if (set_id != other.set_id)
-                return set_id < other.set_id;
-            if (score != other.score)
-                return score < other.score;
-            return key < other.key;
-        }
-    };
-
-    // TODO: rename this
-    typedef long Key;
+    typedef long IndexKey;
     typedef HashMap<Value, Value> Set;
     typedef HashMap<Value, Set*> Sets;
 
-    typedef SkipList<Key, Value> Indexer;
+    typedef SkipList<IndexKey, Value> Indexer;
     typedef HashMap<Value, Indexer*> IndexerList;
-
-    // TODO: delete this
-    typedef SkipList<IndexKey, Value> ScoreIndexer;
 public:
     // @params max_set_size specifies the maximal set numbers.
     // @params max_element_size_in_set specifies how many elements, 
@@ -81,8 +54,8 @@ private:
     }
 
     // Index Keys
-    Key make_index_key(Value key, Value score) {
-        Key combinedKey = score;
+    IndexKey make_index_key(Value key, Value score) {
+        IndexKey combinedKey = score;
         return (combinedKey << ValueBitSize) + key;
     }
 
@@ -90,7 +63,6 @@ private:
     int max_element_size_in_set;
     Sets sets;
     IndexerList indexerList;
-    ScoreIndexer indexer;
 };
 
 #endif
