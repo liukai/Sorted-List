@@ -14,7 +14,7 @@ Hash Table
 ----------------
 In concurrent hash table, items of the same hash code will be placed in a bucket(a linked list), which is also the basic unit for concurrency control. Each bucket will acquire a read lock for read operation and write lock for modification.
 
-In this program, each `set` is a hash map, and there is also a "set of sets" hash table that is used for fast access of each set.
+In this program, each `set` is a hash map, and there is also a "set of sets" hash table that is used for fast access(O(1)) of each set.
 
 I use the "set id" and "key" as the hash code directly. My assumption is that the set ids and keys already have some random distribution. Of course, if such assumption isn't valid, we can also change the `get_hash_code` for the HashTable.
 
@@ -38,6 +38,12 @@ SortedList
 ----------------
 SortedList is a facade that combines both advantage of hash table and skip list. But the sorted list doesn't implement any mechanism to ensure the concurrency between hash table(storing sets) and skip list(indexing the scores). So it is possible that the set has update itself but the skip list is still keeping the out-of-date information(for a short time).
 
+TESTS
+=========================
+The `./unit_test` tests the basic functionalities.
+
+The concurrency test is in `tests/concurrency_test.py`, you can specify configuration in the `tests/concurrency_test_config.py`
+
 How to run the program
 =========================
 compile: `make`
@@ -46,7 +52,6 @@ run server: `./server`, the port number of the server is 7999.
 
 run client: `./client <host> <port> <commands>`. For example you can call `./client 127.0.0.1 7999 "1 20 10 123`, the first number of the third argument indicate the operation(ADD = 1, REM = 2, SIZE = 3, GET = 4, GETRANGE = 5.).
 
-run demo: `./demo.sh`. demo.sh is an example interaction.
 
 Misc
 =========================

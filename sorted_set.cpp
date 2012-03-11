@@ -49,8 +49,6 @@ void SortedSet::remove(Value set_id, Value key) {
         set->remove(key);
         Indexer* indexer = NULL;
         indexerList.get(set_id, indexer);
-        // TODO: COULD THERE BE SOME inconsistency and potential 
-        // harm here?
         assert(indexer); 
         
         indexer->remove(make_index_key(key, score));

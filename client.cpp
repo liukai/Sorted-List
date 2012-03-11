@@ -5,14 +5,15 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <iostream>
+#include <algorithm>
 #include "util.h"
 #include "commands.h"
 
 using namespace std;
+const char* opNames[] = {"None", "ADD", "REM", "SIZE", "GET", "RANGE"};
 
 int parse_command(const char* input, int* buffer) {
     // check if the input is valid: all digits or spaces
-    // TODO: the performance is not so good
     const char* pos = input;
     while (*pos != '\0') {
         if ((*pos >= '0' && *pos <= '9') || // digits
@@ -93,7 +94,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Send the command to the server
-    const int BUFFER_SIZE = 1024;
+    const int BUFFER_SIZE = 1024 * 24;
     int buffer[1024];
     int size = parse_command(input, buffer);
 
@@ -108,19 +109,44 @@ int main(int argc, char* argv[]) {
         cerr<<"Send data fails!"<<endl;
         return 1;
     }
-    int bytesRead = recv(sock, buffer, BUFFER_SIZE - 1, 0);
-    int receiveSize = bytesRead / sizeof(int);
-    to_host_order(buffer, buffer + receiveSize);
-    
-    if (receiveSize != 0) {
-        const char* opNames[] = {"None", "ADD", "REM", "SIZE", "GET", "RANGE"};
-        cout<<opNames[buffer[0]];
-        for (int i = 1; i < receiveSize; ++i) {
-            cout<<" "<<buffer[i];
+    bool first = true;
+    int sepCount = 0;
+    int op = 0;
+
+    while (true) {
+        int bytesRead = recv(sock, buffer, BUFFER_SIZE - 1, 0);
+        int receiveSize = bytesRead / sizeof(int);
+        to_host_order(buffer, buffer + receiveSize);
+
+        if (receiveSize != 0) {
+            int i = 0;
+            if (first) {
+                op  = buffer[0];
+                cout<<opNames[op];
+                i = 1;
+                first = false;
+            }
+            for (; i < receiveSize; ++i) {
+                cout<<" "<<buffer[i];
+            }
+            cout.flush();
+
+            Value* begin = buffer;
+            Value* end = buffer + receiveSize;
+
+            do {
+                begin = find(begin, end, -1);
+                if (begin != end) {
+                    sepCount += 1;
+                    begin += 1;
+                }
+            } while(begin < end);
         }
-        cout<<endl;
-        cout<<endl;
+        if (op != 5 || sepCount >= 2) 
+            break;
     }
+    cout<<endl;
+    cout<<endl;
 
     close(sock);
     return 0;

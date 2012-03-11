@@ -22,13 +22,13 @@ client: client.cpp $(CLIENT_OBJECTS)
 	$(CXX) $(CPPFLAGS) -c -o $@ $<
 
 clean:
-	rm -rf *.o server unit_test client *.dSYM
+	rm -rf *.o server unit_test client *.dSYM 
 rebuild:
 	make clean
 	make
 pack:
 	rm -rf sorted_set.tar.gz
-	tar cvfz sorted_set.tar.gz *.h *.cpp Makefile README.md DESC.txt demo.sh
+	tar cvfz sorted_set.tar.gz *.h *.cpp Makefile README.md DESC.txt tests/demo.sh tests/*.py
 
 run_tests:
 	@echo "[Start Unit Tests] No news is good newes"

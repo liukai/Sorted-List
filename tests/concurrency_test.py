@@ -71,9 +71,14 @@ def assert_range_equal(begin, end, expected_size,
     arguments.append(begin)
     arguments.append(end)
 
+    command = make_command("RANGE", arguments)
+
     result = call("RANGE", arguments).split()[len(arguments) + 1: -1]
 
-    if not assert_equal(len(expected_keys), len(result) / 2, "Range size unmatch", True):
+    if not assert_equal(
+            len(expected_keys), len(result) / 2,
+            "Range size unmatch: " + command,
+            True):
         return False
 
     for index in range(0, len(result), 2):
@@ -97,7 +102,7 @@ def wait_to_finish(threads):
 
 # -- main tests
 def validate_results(set_id, key_start, key_end,
-                     key_to_value_fn, with_range_test = True):
+                     key_to_value_fn, check_range = False):
     # Test size
     assert_size_equal(key_end - key_start, set_id)
 
@@ -109,9 +114,10 @@ def validate_results(set_id, key_start, key_end,
         assert_equal(expected_result, actual_result)
 
     # Test the range operation
-    if not with_range_test:
+    if not check_range:
         return
-    assert_range_equal(key_to_value_fn(key_start), key_to_value_fn(key_end),
+    assert_range_equal(key_to_value_fn(key_start),
+                       key_to_value_fn(key_end),
                        key_end - key_start,
                        range(key_start, key_end), [set_id],
                        key_to_value_fn)
@@ -167,7 +173,6 @@ def single_set_parallel_test():
 
     keys = range(thread_count * count)
     random.shuffle(keys)
-    print keys[0]
 
     # Batch add
     threads = []
@@ -185,8 +190,9 @@ def single_set_parallel_test():
         thread.start()
     wait_to_finish(threads)
 
+    print "Validating ..."
     validate_results(set_id, 0, thread_count * count,
-                     key_to_value_1, with_range_test = False)
+                     key_to_value_1, True)
 
     # Batch removal
     threads = []
@@ -203,9 +209,9 @@ def single_set_parallel_test():
         thread.start()
     wait_to_finish(threads)
 
+    print "Validating ..."
     assert_size_equal(0, set_id)
 
-
 if "__main__" == __name__:
-    batch_sets_test()
     single_set_parallel_test()
+    batch_sets_test()

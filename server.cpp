@@ -8,6 +8,7 @@ using namespace std;
 
 // -- Constants
 const int ARGUMENT_OFFSET = 1;
+static const int BUFFER_SIZE = 1024;
 
 // -- Utilities
 bool are_valid_values(Value* begin, Value* end) {
@@ -17,6 +18,30 @@ bool are_valid_values(Value* begin, Value* end) {
         ++begin;
     }
     return true;
+}
+void write_to_network(int fd, Value* buffer, int size) {
+    to_network_order(buffer, buffer + size);
+    write(fd, buffer, size * sizeof(Value));
+}
+// WriteBackInfo stores the information needed for the
+// write_to_client function.
+struct WriteBackInfo {
+    int client;
+    Value* buffer;
+    int count;
+    const int max_size;
+};
+void write_to_client(const SortedSet::IndexKey& indexKey, 
+                     const Value& _, void* arg) {
+    WriteBackInfo* p_info = (WriteBackInfo*) arg;
+    
+    // if the buffer is almost full, write it back 
+    if (p_info->count >= p_info->max_size - 2) {
+        write_to_network(p_info->client, p_info->buffer, p_info->count);
+        p_info->count = 0;
+    }
+    p_info->buffer[p_info->count++] = (Value)indexKey;
+    p_info->buffer[p_info->count++] = indexKey>>ValueBitSize;
 }
 void append_to_buffer(const SortedSet::IndexKey& indexKey, const Value& _, void* arg) {
     Value** pos_ptr = (Value**) arg;
@@ -28,10 +53,6 @@ void append_to_buffer(const SortedSet::IndexKey& indexKey, const Value& _, void*
     *pos_ptr += 1; // update the pos
     **pos_ptr = val;
     *pos_ptr += 1;
-}
-void write_to_network(int fd, Value* buffer, int size) {
-    to_network_order(buffer, buffer + size);
-    write(fd, buffer, size * sizeof(Value));
 }
 
 // -- SortedSetServer 
@@ -130,7 +151,6 @@ void* SortedSetServer::handle_request(void* args) {
     cout<<"[INFO] new request arrives"<<endl;
     ThreadArgs* arguments = (ThreadArgs*) args;
 
-    static const int BUFFER_SIZE = 1024 * 8;
     Value buffer[BUFFER_SIZE] = { '\0' };
     int bufferRead = read(arguments->first, buffer, BUFFER_SIZE);
     if (bufferRead <= 0) {
@@ -266,14 +286,21 @@ void SortedSetServer::get_range(int client, Value* buffer,
     // Skip the `lower` and `upper`; so after this pos will point to 
     // the position ready to append command results.
     pos += 2;
+    write_to_network(client, buffer, pos - buffer);
 
     // NOTE: here I pass the address to the 'pos' pointer. (pointer to a pointer).
     //       Doing this allows the callback function to have enough information 
     //       update the latest available position for append.
+    to_host_order(set_id_begin, set_id_end);
+
+    int avalable_size = BUFFER_SIZE - (pos - buffer);
+    WriteBackInfo info = {client, pos, 0, avalable_size};
     set->get_range(set_id_begin, set_id_end, lower, upper, 
-                   append_to_buffer, &pos);
+                   write_to_client, &info);
 
-    *pos++ = InvalidValue; // add a separator to indicate the end of results
-    write_to_network(client, buffer, pos - buffer);
+    // write back the rest of the buffer
+    write_to_network(client, info.buffer, info.count);
+
+    Value returnVal = InvalidValue;
+    write_to_network(client, &returnVal, 1);
 }
-
