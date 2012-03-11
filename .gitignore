@@ -4,4 +4,5 @@ client
 *.o
 *.dSYM
 .DS_Store
+*.pyc
 
