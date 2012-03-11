@@ -6,9 +6,10 @@ typedef int Value;
 const int InvalidValue = -1;
 // NetworkOrderInvalidValue is the network ordered representation
 // of InvalidValue
-const int NetworkOrderInvalidValue = htonl(InvalidValue);
+const int ValueBitSize = 32;
 const int MinValue = 0;
 const int MaxValue = 2147483647;
+const int NetworkOrderInvalidValue = htonl(InvalidValue);
 
 // This method will check the return value of Unix-style APIs(where result < 0
 // indicates failure otherwise success) and display corresponding error message
@@ -33,7 +34,7 @@ void to_network_order(TData* begin, TData* end) {
 }
 
 template <class T>
-inline int naive_hash(const T& item) { return (int)item; }
+inline T naive_hash(const T& item) { return item; }
 
 #endif
 

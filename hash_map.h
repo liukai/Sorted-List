@@ -8,6 +8,10 @@
 #include <algorithm>
 #include "lockable.h"
 
+// TODO: JUST FOR TEST
+#include <iostream>
+using namespace std;
+
 template <class TKey, class TValue>
 class HashMap {
     typedef std::pair<TKey, TValue> Slot;
@@ -16,7 +20,8 @@ class HashMap {
     typedef typename Bucket::iterator SlotPointer;
 public:
     typedef int (*HashFunction) (const TKey&);
-    typedef void (ForeachAction) (const TKey&, TValue&);
+    typedef void (*ForeachAction) (const TKey&, TValue&);
+    typedef TValue (*ValueGenerator)(void*);
 
     HashMap(int max_size, HashFunction fun): table(max_size), get_hash_code(fun) {
         locks = new Lockable[max_size];
@@ -28,6 +33,7 @@ public:
     // QUERIES
     bool containsKey(const TKey& key);
     bool get(const TKey &key, TValue& pVal); 
+    void safe_get(const TKey &key, TValue& val, ValueGenerator defaultValueValueGenerator, void* arg); 
     int size() const {
         return counter.get();
     }
@@ -92,6 +98,26 @@ bool HashMap<TKey, TValue>::get(const TKey &key, TValue& val) {
 
     return is_succeed;
 }
+template <class TKey, class TValue>
+void HashMap<TKey, TValue>::safe_get(const TKey& key, TValue& value,
+                                     HashMap::ValueGenerator defaultValueValueGenerator, void* arg) {
+    int bucket_id = get_bucket_id(key);
+    Bucket& bucket = table[bucket_id];
+    locks[bucket_id].write_lock();
+
+    SlotPointer slot = find_slot(bucket, key);
+
+    if (slot == bucket.end()) { // Insert new item
+        value = defaultValueValueGenerator(arg);
+        bucket.push_back(make_pair(key, value));
+        counter.increase();
+    } else { // Update existing item
+        value = slot->second;
+    }
+
+    locks[bucket_id].unlock();
+}
+
 
 template <class TKey, class TValue>
 bool HashMap<TKey, TValue>::add(const TKey& key, const TValue& value) {

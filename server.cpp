@@ -18,12 +18,15 @@ bool are_valid_values(Value* begin, Value* end) {
     }
     return true;
 }
-void append_to_buffer(const SortedSet::IndexKey& indexKey, const Value& _, void* arg) {
+void append_to_buffer(const SortedSet::Key& indexKey, const Value& _, void* arg) {
     Value** pos_ptr = (Value**) arg;
 
-    **pos_ptr = indexKey.key;
+    Value key =  (Value)indexKey;
+    Value val = indexKey>>ValueBitSize;
+
+    **pos_ptr = key;
     *pos_ptr += 1; // update the pos
-    **pos_ptr = indexKey.score;
+    **pos_ptr = val;
     *pos_ptr += 1;
 }
 void write_to_network(int fd, Value* buffer, int size) {
@@ -127,7 +130,7 @@ void* SortedSetServer::handle_request(void* args) {
     cout<<"[INFO] new request arrives"<<endl;
     ThreadArgs* arguments = (ThreadArgs*) args;
 
-    static const int BUFFER_SIZE = 1024;
+    static const int BUFFER_SIZE = 1024 * 8;
     Value buffer[BUFFER_SIZE] = { '\0' };
     int bufferRead = read(arguments->first, buffer, BUFFER_SIZE);
     if (bufferRead <= 0) {

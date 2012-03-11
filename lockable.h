@@ -2,6 +2,7 @@
 #define QUORA_LOCKABLE_H
 
 #include <pthread.h>
+#include <cassert>
 
 class Lockable {
 public:

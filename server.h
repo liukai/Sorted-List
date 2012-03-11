@@ -13,7 +13,7 @@ public:
     // Arguments:
     //   @max_connection: maximal parellel connection.
     //   @set_size: the size of the sorted set.
-    SortedSetServer(int port, int max_connection = 10, int set_size = 4513):
+    SortedSetServer(int port, int max_connection = 1024, int set_size = 4513):
             port(port), max_connection(max_connection),
             server_socket(-1), sorted_set(set_size, set_size) {
     }
@@ -41,7 +41,7 @@ private:
     static void get_range(int client, Value* buffer, int buffer_size, SortedSet* set);
 
     static CommandHandler commands[];
-    static const int PORT_SIZE = 10;
+    static const int PORT_SIZE = 40;
     static CommandRules ruler;
 
     int port;

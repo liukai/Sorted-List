@@ -3,4 +3,5 @@ unit_test
 client
 *.o
 *.dSYM
+.DS_Store
 

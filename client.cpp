@@ -114,9 +114,9 @@ int main(int argc, char* argv[]) {
     
     if (receiveSize != 0) {
         const char* opNames[] = {"None", "ADD", "REM", "SIZE", "GET", "RANGE"};
-        cout<<"Received data: "<<opNames[buffer[0]];
+        cout<<opNames[buffer[0]];
         for (int i = 1; i < receiveSize; ++i) {
-            cout<<"  "<<buffer[i];
+            cout<<" "<<buffer[i];
         }
         cout<<endl;
         cout<<endl;

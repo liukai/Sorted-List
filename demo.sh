@@ -42,3 +42,5 @@ client $host $port "2 $set1 $k2"
 echo "<GETRANGE> <set1> <set2> <-1> <0> <INT_MAX> [k3] [1] [k1] [2] [-1]"
 client $host $port "5 $set1 $set2 -1 0 10000"
 
+echo "<GET> <set1> <k3> [1]"
+client $host $port "4 $set2 $k3"

@@ -15,7 +15,8 @@ void add_one(const int& key, const int& value, void* arg) {
     int* pCount = (int*) arg;
     (*pCount) += 1;
 }
-void add_one_for_index_key(const SortedSet::IndexKey& key, const int& value, void* arg) {
+void add_one_for_index_key(const long& key, const int& value, 
+                           void* arg) {
     int* pCount = (int*) arg;
     (*pCount) += 1;
 }
@@ -45,21 +46,21 @@ void test_sorted_set() {
     // test invalid "get" and "size" operation
     // -- set exists, key doesn't exist
     assert(set.size(0) == 0);
-    assert(set.get(1, 0) == SortedSet::INVALID);
+    assert(set.get(1, 0) == InvalidValue);
     // -- set doesn't exists
-    assert(set.get(0, 0) == SortedSet::INVALID);
+    assert(set.get(0, 0) == InvalidValue);
 
     // remove test
     // -- erase existing item
     set.remove(1, 2);
     assert(set.size(1) == 2);
-    assert(set.get(1, 2) == SortedSet::INVALID);
+    assert(set.get(1, 2) == InvalidValue);
     // -- erase set that doesn't exist
     set.remove(0, 2);
     // -- erase key that doesn't exist
     set.remove(1, 2);
     assert(set.size(1) == 2);
-    assert(set.get(1, 2) == SortedSet::INVALID);
+    assert(set.get(1, 2) == InvalidValue);
 
     // range test
     int count = 0;
