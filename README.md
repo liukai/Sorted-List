@@ -1,6 +1,6 @@
 Overview
 =========================
-The program is primarily composed by 2 parts:
+The program is primarily composed of 2 parts:
 
 * Network communication: This part handles the upper level network communication, such as transfer command/data between server and client, parse the incoming request, etc.
 * Concurrent Data Structure: I implement 2 basic concurrent data structure: 

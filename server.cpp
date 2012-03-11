@@ -18,7 +18,7 @@ bool are_valid_values(Value* begin, Value* end) {
     }
     return true;
 }
-void append_to_buffer(const SortedSet::Key& indexKey, const Value& _, void* arg) {
+void append_to_buffer(const SortedSet::IndexKey& indexKey, const Value& _, void* arg) {
     Value** pos_ptr = (Value**) arg;
 
     Value key =  (Value)indexKey;

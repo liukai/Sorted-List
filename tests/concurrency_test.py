@@ -6,22 +6,15 @@ import commands
 import random
 import sys
 
-"""
-Description:
 
-"""
-
-def key_to_value(key):
-    return 2 * key + 1
-def wait_to_finish(threads):
-    for thread in threads:
-        thread.join()
+# -- Commands
 def make_command(op, args):
     prefix = " ".join([CONFIG["client"], CONFIG["host"], str(CONFIG["port"])])
     arg_list = [OPERATIONS[op]]
     arg_list.extend(args)
     suffix = " ".join([str(item) for item in arg_list])
     return "%s '%s'" % (prefix, suffix)
+
 def call(op, args):
     command = make_command(op, args)
     result = commands.getstatusoutput(command)
@@ -35,7 +28,31 @@ def call(op, args):
     if max_trial == 0:
         exit(1)
     return result[1][:-1]
+def run_sequence_commands(keys, set_id, op,
+                          to_args = lambda set_id, key : (set_id, key)):
+    for index, key in enumerate(keys):
+        print "sequence command:", index
+        call(op, to_args(set_id, key))
 
+def run_parallel_commands(key_start, key_end, set_id, op,
+                          is_valid = lambda key: True,
+                          to_args = lambda set_id, key : (set_id, key)):
+    # Shuffle
+    key_range = range(key_start, key_end)
+    random.shuffle(key_range)
+
+    threads = []
+    for key in xrange(key_start, key_end):
+        if not is_valid(key):
+            continue
+        thread = threading.Thread(target=call,
+                                  args=(op, to_args(set_id, key)))
+        thread.start()
+        threads.append(thread)
+
+    wait_to_finish(threads)
+
+# -- Unit Testing
 def assert_equal(expected, actual, text = "", exit_on_error = True):
     if expected != actual:
         print "[UN-MATCHED] %s: expected <%s> but actual <%s>" % \
@@ -47,7 +64,8 @@ def assert_size_equal(expected_size, set_id):
     return assert_equal("SIZE %d %d" % (set_id, expected_size),
                         call("SIZE", [set_id]))
 def assert_range_equal(begin, end, expected_size,
-                       expected_keys, sets):
+                       expected_keys, sets,
+                       key_to_value_fn):
     arguments = sets
     arguments.append(-1)
     arguments.append(begin)
@@ -63,67 +81,57 @@ def assert_range_equal(begin, end, expected_size,
         val = result[index + 1]
 
         exp_key = expected_keys[index / 2]
-        exp_val = key_to_value(exp_key)
+        exp_val = key_to_value_fn(exp_key)
         assert_equal(str(exp_key), key, "key unmatch", True)
         assert_equal(str(exp_val), val, "value unmatch", True)
 
+# -- Misc
+def key_to_value_1(key):
+    return 2 * key + 1
+def key_to_value_2(key):
+    return 2 * key + 1
 
-# Threads
-def run_parallel_commands(key_start, key_end, set_id, op,
-                          is_valid = lambda key: True,
-                          to_args = lambda set_id, key : (set_id, key)):
-    threads = []
+def wait_to_finish(threads):
+    for thread in threads:
+        thread.join()
 
-    # Shuffle
-    key_range = random.shuffle(range(key_start, key_end))
+# -- main tests
+def validate_results(set_id, key_start, key_end,
+                     key_to_value_fn, with_range_test = True):
+    # Test size
+    assert_size_equal(key_end - key_start, set_id)
 
+    # Test correctness of each element
     for key in xrange(key_start, key_end):
-        if not is_valid(key):
-            continue
-        thread = threading.Thread(target=call,
-                                  args=(op, to_args(set_id, key)))
-        thread.start()
-        threads.append(thread)
+        expected_result = "GET %d %d %d" % \
+                          (set_id, key, key_to_value_fn(key))
+        actual_result = call("GET", [set_id, key])
+        assert_equal(expected_result, actual_result)
 
-    wait_to_finish(threads)
+    # Test the range operation
+    if not with_range_test:
+        return
+    assert_range_equal(key_to_value_fn(key_start), key_to_value_fn(key_end),
+                       key_end - key_start,
+                       range(key_start, key_end), [set_id],
+                       key_to_value_fn)
 
-def test_single_set(set_id):
+def test_single_set(set_id, key_start, key_end):
     """ This function will run the currency test on a single set in the sorted list"""
-    key_start = CONFIG["test_key_start"]
-    key_end = CONFIG["test_key_end"]
-
     # -- Phase 1: Add a series of key/value pairs
     run_parallel_commands(key_start, key_end, set_id, "ADD",
-                          to_args = lambda set_id, key: [set_id, key, key_to_value(key)])
+                          to_args = lambda set_id,
+                                    key: [set_id, key, key_to_value_1(key)])
 
-    # -- Phase 2: Validate the results
-    # Test size
-    assert_size_equal(key_end - key_start, set_id)
-    for key in xrange(key_start, key_end):
-        expected_result = "GET %d %d %d" % (set_id, key, key_to_value(key))
-        actual_result = call("GET", [set_id, key])
-        assert_equal(expected_result, actual_result)
+    validate_results(set_id, key_start, key_end, key_to_value_1)
 
-    assert_range_equal(key_to_value(key_start), key_to_value(key_end),
-                       key_end - key_start,
-                       range(key_start, key_end), [set_id])
-
+    # -- Phase 2: Update the values
     run_parallel_commands(key_start, key_end, set_id, "ADD",
-                          to_args = lambda set_id, key: [set_id, key, key_to_value(key)])
+                          to_args = lambda set_id, key: [set_id, key, key_to_value_2(key)])
 
-    # Test size
-    assert_size_equal(key_end - key_start, set_id)
-    for key in xrange(key_start, key_end):
-        expected_result = "GET %d %d %d" % (set_id, key, key_to_value(key))
-        actual_result = call("GET", [set_id, key])
-        assert_equal(expected_result, actual_result)
-
-    assert_range_equal(key_to_value(key_start), key_to_value(key_end),
-                       key_end - key_start,
-                       range(key_start, key_end), [set_id])
+    validate_results(set_id, key_start, key_end, key_to_value_2)
 
     # -- Phase 3: Remove the odd elements
-
     run_parallel_commands(key_start, key_end, set_id, "REM",
                           is_valid = lambda key: key % 2  == 0)
 
@@ -133,16 +141,71 @@ def test_single_set(set_id):
         if (key % 2 == 0):
             expected_result = "GET %d %d %d" % (set_id, key, -1)
         else:
-            expected_result = "GET %d %d %d" % (set_id, key, key_to_value(key))
+            expected_result = "GET %d %d %d" % \
+                              (set_id, key, key_to_value_2(key))
         actual_result = call("GET", [set_id, key])
         assert_equal(expected_result, actual_result)
 
-    assert_range_equal(key_to_value(key_start), key_to_value(key_end),
+    assert_range_equal(key_to_value_2(key_start), key_to_value_2(key_end),
                        (key_end - key_start) / 2,
-                       range(key_start + 1, key_end, 2), [set_id])
+                       range(key_start + 1, key_end, 2), [set_id],
+                       key_to_value_2)
 
-# test_single_set(1)
-for i in range(500):
-    print "call %d" % i
-    # test_single_set(1)
-    test_single_set(i + 2048)
+def batch_sets_test():
+    key_start = CONFIG["test_key_start"]
+    key_end = CONFIG["test_key_end"]
+
+    for i in CONFIG["test_set_ids"]:
+        print "Test single set: %d" % i
+        test_single_set(i, key_start, key_end)
+
+def single_set_parallel_test():
+    """ Add many items to a single set """
+    thread_count = CONFIG["thread_count"]
+    count = CONFIG["updates_per_thread"]
+    set_id = CONFIG["target_set"]
+
+    keys = range(thread_count * count)
+    random.shuffle(keys)
+    print keys[0]
+
+    # Batch add
+    threads = []
+    for i in xrange(thread_count):
+        begin = i * count
+        end = (i + 1) * count
+        thread = threading.Thread(
+                    target = run_sequence_commands,
+                    args = (
+                        keys[begin: end], set_id,
+                        "ADD",
+                        lambda set_id, key:
+                                [set_id, key, key_to_value_1(key)]))
+        threads.append(thread)
+        thread.start()
+    wait_to_finish(threads)
+
+    validate_results(set_id, 0, thread_count * count,
+                     key_to_value_1, with_range_test = False)
+
+    # Batch removal
+    threads = []
+    for i in xrange(thread_count):
+        begin = i * count
+        end = (i + 1) * count
+        thread = threading.Thread(
+                    target = run_sequence_commands,
+                    args = (
+                        keys[begin: end], set_id,
+                        "REM",
+                        lambda set_id, key: [set_id, key]))
+        threads.append(thread)
+        thread.start()
+    wait_to_finish(threads)
+
+    assert_size_equal(0, set_id)
+
+
+if "__main__" == __name__:
+    batch_sets_test()
+    single_set_parallel_test()
