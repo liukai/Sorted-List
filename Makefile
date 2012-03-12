@@ -12,7 +12,7 @@ all: server unit_test client
 
 server: run_server.cpp $(SERVER_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(LIBS) -o $@ $^
-	#make run_tests
+	make run_tests
 unit_test: unit_test.cpp $(UNIT_TEST_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(LIBS) -o $@ $^
 client: client.cpp $(CLIENT_OBJECTS)

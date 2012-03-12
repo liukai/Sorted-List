@@ -27,7 +27,7 @@ def call(op, args):
         max_trial -= 1
     if max_trial == 0:
         exit(1)
-    return result[1][:-1]
+    return result[1]
 def run_sequence_commands(keys, set_id, op,
                           to_args = lambda set_id, key : (set_id, key)):
     for index, key in enumerate(keys):
@@ -73,9 +73,7 @@ def assert_range_equal(begin, end, expected_size,
 
     command = make_command("RANGE", arguments)
 
-    print "before ... ", make_command("RANGE", arguments)
     result = call("RANGE", arguments).split()[len(arguments) + 1: -1]
-    print "after ..."
 
     if not assert_equal(
             len(expected_keys), len(result) / 2,
@@ -215,4 +213,4 @@ def single_set_parallel_test():
 
 if "__main__" == __name__:
     single_set_parallel_test()
-    # batch_sets_test()
+    batch_sets_test()
