@@ -73,7 +73,9 @@ def assert_range_equal(begin, end, expected_size,
 
     command = make_command("RANGE", arguments)
 
+    print "before ... ", make_command("RANGE", arguments)
     result = call("RANGE", arguments).split()[len(arguments) + 1: -1]
+    print "after ..."
 
     if not assert_equal(
             len(expected_keys), len(result) / 2,
@@ -106,21 +108,20 @@ def validate_results(set_id, key_start, key_end,
     # Test size
     assert_size_equal(key_end - key_start, set_id)
 
+    # Test the range operation
+    if check_range:
+        assert_range_equal(key_to_value_fn(key_start),
+                           key_to_value_fn(key_end),
+                           key_end - key_start,
+                           range(key_start, key_end), [set_id],
+                           key_to_value_fn)
+
     # Test correctness of each element
     for key in xrange(key_start, key_end):
         expected_result = "GET %d %d %d" % \
                           (set_id, key, key_to_value_fn(key))
         actual_result = call("GET", [set_id, key])
         assert_equal(expected_result, actual_result)
-
-    # Test the range operation
-    if not check_range:
-        return
-    assert_range_equal(key_to_value_fn(key_start),
-                       key_to_value_fn(key_end),
-                       key_end - key_start,
-                       range(key_start, key_end), [set_id],
-                       key_to_value_fn)
 
 def test_single_set(set_id, key_start, key_end):
     """ This function will run the currency test on a single set in the sorted list"""
@@ -214,4 +215,4 @@ def single_set_parallel_test():
 
 if "__main__" == __name__:
     single_set_parallel_test()
-    batch_sets_test()
+    # batch_sets_test()

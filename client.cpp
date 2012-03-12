@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
 
     // Send the command to the server
     const int BUFFER_SIZE = 1024 * 24;
-    int buffer[1024];
+    int buffer[BUFFER_SIZE];
     int size = parse_command(input, buffer);
 
     if (size == -1) {
@@ -113,6 +113,8 @@ int main(int argc, char* argv[]) {
     int sepCount = 0;
     int op = 0;
 
+    // for range operation, it may need several iteration to receive
+    // the whole returned data.
     while (true) {
         int bytesRead = recv(sock, buffer, BUFFER_SIZE - 1, 0);
         int receiveSize = bytesRead / sizeof(int);
@@ -145,7 +147,6 @@ int main(int argc, char* argv[]) {
         if (op != 5 || sepCount >= 2) 
             break;
     }
-    cout<<endl;
     cout<<endl;
 
     close(sock);

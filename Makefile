@@ -1,5 +1,5 @@
 CXX=g++
-CPPFLAGS=-g -Wall
+CPPFLAGS=-O2 -Wall
 LIBS=-lpthread
 
 SERVER_OBJECTS=server.o util.o sorted_set.o commands.o hash_map.o skiplist.o lockable.o
